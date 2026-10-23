@@ -5,7 +5,7 @@
     {
       "name": "session-rail",
       "source": "./session-rail",
-      "description": "A Session pane beside the chat: environment, context and usage limits, like Claude Desktop's session rail"
+      "description": "A Session pane beside the chat: environment, context, usage limits and cost by model, like Claude Desktop's session rail"
     }
   ]
 }

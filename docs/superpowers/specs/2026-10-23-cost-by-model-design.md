@@ -46,7 +46,7 @@ main thread writes 1h entries.
   is at least $0.005. It holds what the mod could not price: models missing
   from the table, requests made before the mod loaded, and requests that do not
   pass through `turn.step` (title generation and similar side calls).
-- No rows yet and no Other: `No data yet`, as the Usage card does.
+- No rows yet and no Other: `No spend yet` (distinct from the Usage card's `No data yet`).
 - Amounts: `$` and 4 decimals below $1, 2 decimals from $1 up.
 
 ## Pricing (`hooks/pricing.ts`)

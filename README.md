@@ -4,7 +4,7 @@ Mods that bring pieces of Claude Desktop's Claude Code UI to the Claude Code CLI
 
 | Mod | What it adds |
 |---|---|
-| [session-rail](#session-rail) | A **Session** pane beside the chat: environment, context usage and rate limits |
+| [session-rail](#session-rail) | A **Session** pane beside the chat: environment, context usage, rate limits and cost by model |
 
 ## Requirements
 
@@ -54,9 +54,17 @@ Your 5-hour and 7-day rate-limit windows: percent used and time until reset. The
 
 Rate limits are reported for Claude subscription accounts. With an API key there may be none, and the card shows `No data yet`.
 
+### Cost
+
+What the session has cost so far, the same total `/cost` prints. Unfolded, it lists each model the session used, most expensive first.
+
+The per-model amounts are estimated from each response's token counts at list prices, with prompt-cache writes priced at the 1-hour rate. They can drift from `/cost`'s per-model figures by a little. Spend the mod could not attribute to a model shows as **Other**: requests made before the mod loaded, models it has no price for, and small side requests such as session titles. The total is always the engine's own.
+
+`/clear` starts the count over, as it does for `/cost`.
+
 ### When it updates
 
-At session start, after every turn, and after every Bash command (so a branch switch or a new change shows up). The reset countdown is as fresh as the last update.
+At session start, after every turn, and after every Bash command (so a branch switch or a new change shows up). The Cost card also updates after every model response, subagents' included. The reset countdown is as fresh as the last update.
 
 ### The pane background
 

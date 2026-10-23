@@ -50,7 +50,7 @@ export const register: Register = on => {
     const started = await next(e)
     await $.command.register({
       name: 'rail',
-      description: 'Open or close the Session pane (environment, context and usage limits)',
+      description: 'Open or close the Session pane (environment, context, usage limits and cost)',
       // Opening or closing the pane touches nothing of the turn, so it need not wait for it.
       immediate: true,
     })
