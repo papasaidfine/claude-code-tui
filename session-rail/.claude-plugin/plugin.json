@@ -1,0 +1,9 @@
+{
+  "name": "session-rail",
+  "version": "0.1.0",
+  "description": "A Session pane beside the chat: environment, context and usage limits, like Claude Desktop's session rail",
+  "author": { "name": "papasaidfine" },
+  "license": "MIT",
+  "repository": "https://github.com/papasaidfine/claude-code-tui",
+  "types": "./types/index.d.ts"
+}
