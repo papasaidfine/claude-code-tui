@@ -38,11 +38,22 @@ A pane (`$.ui.open({ id: 'session-rail', title: 'Session' })`) drawn by a
 ╰──────────────────────────────╯
 ```
 
-Each card header is a plain `Button` that toggles the card open/closed. Icons are
-Nerd Font glyphs (`md-laptop`, `fa-folder_o`, `dev-git_branch`), so the terminal
-font must be a Nerd Font.
+Each card title is bold `Text` followed by a one-glyph `Button` (`▾`/`▸`) that
+folds the card. A desktop draws every `Button` natively, with its own padding, so
+a title that was itself a Button would sit further in than the card's rows.
 
-Bars are 5 cells: filled `━` in color, empty `─` dimmed.
+The tree depends on `e.surface`:
+
+| | terminal | desktop, vscode, mobile |
+|---|---|---|
+| Icons | Nerd Font glyphs (`md-laptop`, `fa-folder_o`, `dev-git_branch`) | `Svg` outline icons (`hooks/svg.ts`); their fonts may lack Nerd Font glyphs |
+| Meters | 5 cells, filled `━` in color, empty `─` dimmed | a 40×6 px rounded `Svg` bar |
+| Card borders | `borderDimColor` | `borderColor: 'inactive'` (dim is drawn too faint there) |
+| Space between cards | none (box-drawing borders leave half a cell) | `gap: 1` (CSS borders would touch) |
+
+An `Svg` is drawn as an image and inherits no text color, so its colors are fixed
+mid-tones that read on light and dark themes: gray `#8a8a8a`, fill `#5b8def`,
+warning `#e0a526`, error `#e5534b`.
 
 ### Environment (open by default)
 
@@ -54,7 +65,7 @@ Bars are 5 cells: filled `━` in color, empty `─` dimmed.
 
 ### Context (closed by default)
 
-- Header: `context.percent` from `$.session.usage()` as `NN%` plus a bar. Before
+- Header: `context.percent` from `$.session.usage()` as `NN%` plus a meter. Before
   the first API response the percent is absent: show `—` and an empty bar.
 - Opened: one row per `context.breakdown.categories` entry with its token count
   (`3.1k`), deferred categories left out, from
@@ -65,9 +76,9 @@ Bars are 5 cells: filled `━` in color, empty `─` dimmed.
 
 - One row per `rateLimits` entry of the same `$.session.usage()` call: the window
   (`five_hour` → `5h`, `seven_day` → `7d`, `spend_limit` → `spend`), the percent
-  used, a bar, and the time until `resetsAt` relative to `$.clock.now()` (`45m`,
+  used, a meter, and the time until `resetsAt` relative to `$.clock.now()` (`45m`,
   `2h14m`, `3d5h`).
-- Percent and bar turn the theme's `warning` color from 80% and `error` from 95%.
+- Percent and meter turn warning-colored from 80% and error-colored from 95%.
 - No rate-limit reading yet (or an account without one): `No data yet`.
 - The relative time is computed at refresh, so it is as fresh as the last refresh.
 

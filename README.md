@@ -9,7 +9,7 @@ Mods that bring pieces of Claude Desktop's Claude Code UI to the Claude Code CLI
 ## Requirements
 
 - Claude Code CLI 2.1.308 or newer (mods use the function-hooks plugin API, which is in early access)
-- A [Nerd Font](https://www.nerdfonts.com/) in your terminal, for the icons
+- In the terminal, a [Nerd Font](https://www.nerdfonts.com/) for the icons. Claude Desktop and VS Code draw their own icons and bars, so they need nothing extra.
 - For the pane to dock beside the chat: the fullscreen layout and a terminal at least 110 columns wide
 
 ## Install

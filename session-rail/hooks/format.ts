@@ -12,14 +12,9 @@ export function splitPath(cwd: string, home: string | undefined): { dir: string;
   return { dir, parent }
 }
 
-export type BarGlyphs = { fill: string; empty: string }
-
-export const THIN: BarGlyphs = { fill: '━', empty: '─' }
-export const SHADE: BarGlyphs = { fill: '▓', empty: '░' }
-
-export function bar(percent: number | null, glyphs: BarGlyphs = THIN): { filled: string; empty: string } {
+export function bar(percent: number | null): { filled: string; empty: string } {
   const filled = percent === null ? 0 : Math.min(CELLS, Math.round((percent / 100) * CELLS))
-  return { filled: glyphs.fill.repeat(filled), empty: glyphs.empty.repeat(CELLS - filled) }
+  return { filled: '━'.repeat(filled), empty: '─'.repeat(CELLS - filled) }
 }
 
 export function tokens(n: number): string {

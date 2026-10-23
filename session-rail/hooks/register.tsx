@@ -1,9 +1,10 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { EngineInterface, Register, RenderChildren } from 'claude-code'
 
 import type { ContextInfo, Env, Limit } from '../types'
 import { readEnv, readUsage } from './collect'
-import { SHADE, THIN, bar, level, tokens } from './format'
+import { bar, level, tokens } from './format'
+import { COLOR, ICON_ALT, ICON_SVG, meterSvg } from './svg'
 
 const PANE = 'session-rail'
 const TITLE = 'Session'
@@ -60,7 +61,8 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button } = $.ui.resolve(e)
+    const ui = $.ui.resolve(e)
+    const { Box, Text, Button } = ui
     const [envNow, contextNow, limitsNow, envOpen, contextOpen, usageOpen] = await Promise.all([
       read($, env),
       read($, context),
@@ -70,10 +72,10 @@ export const register: Register = on => {
       read($, isUsageOpen),
     ])
     const percent = contextNow.percent === null ? '—' : `${Math.round(contextNow.percent)}%`
+    // Every surface but the terminal has Svg: drawn icons and meters there, since its
+    // font may lack the Nerd Font glyphs and thins out box-drawing bars.
     const isTerminal = e.surface === 'terminal'
-    // The terminal draws thin box-drawing bars well; other surfaces' fonts thin them out.
-    const glyphs = isTerminal ? THIN : SHADE
-    const { filled, empty } = bar(contextNow.percent, glyphs)
+    const Svg = !isTerminal && 'Svg' in ui ? ui.Svg : undefined
     const labelWidth = Math.max(0, ...limitsNow.map(limit => limit.label.length))
 
     // The terminal's box-drawing borders already leave half a cell between cards and
@@ -92,23 +94,53 @@ export const register: Register = on => {
       </Box>
     )
 
+    const iconRow = (name: keyof typeof ICON, line: RenderChildren) =>
+      Svg ? (
+        <Box flexDirection="row" gap={1} alignItems="center">
+          <Svg source={ICON_SVG[name]} alt={ICON_ALT[name]} width={14} height={14} />
+          <Text wrap="truncate-middle">{line}</Text>
+        </Box>
+      ) : (
+        <Text wrap="truncate-middle">
+          {ICON[name]} {line}
+        </Text>
+      )
+
+    // A meter after `lead` (and before `trail`): one Text of glyphs on the terminal,
+    // a row of Text and Svg elsewhere.
+    const meter = (label: string, percent: number | null, lead: RenderChildren, trail?: RenderChildren) => {
+      const warn = percent === null ? undefined : level(percent)
+      if (Svg) {
+        const color = warn ? COLOR[warn] : COLOR.fill
+        const alt = percent === null ? `${label} no data` : `${label} ${Math.round(percent)}% used`
+        return (
+          <Box flexDirection="row" gap={1} alignItems="center">
+            <Text>{lead}</Text>
+            <Svg source={meterSvg(percent, color)} alt={alt} width={40} height={6} />
+            {trail !== undefined && <Text dimColor>{trail}</Text>}
+          </Box>
+        )
+      }
+      const cells = bar(percent)
+      return (
+        <Text>
+          {lead} <Text color={warn ?? 'blue'}>{cells.filled}</Text>
+          <Text dimColor>{cells.empty}</Text>
+          {trail !== undefined && <Text dimColor> {trail}</Text>}
+        </Text>
+      )
+    }
+
     return (
       <Box key="cards" flexDirection="column" {...spacing}>
         <Box key="env-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
           {title('Environment', 'env', envOpen, () => update($, isEnvOpen, open => !open))}
           {envOpen && (
             <Box flexDirection="column">
-              <Text>{ICON.host} {envNow.host}</Text>
-              <Text wrap="truncate-middle">
-                {ICON.folder} {envNow.dir}
-                {envNow.parent && <Text dimColor> · {envNow.parent}</Text>}
-              </Text>
-              {envNow.branch !== undefined && (
-                <Text>
-                  {ICON.branch} {envNow.branch}
-                  {envNow.isDirty && <Text color="yellow"> *</Text>}
-                </Text>
-              )}
+              {iconRow('host', envNow.host)}
+              {iconRow('folder', [envNow.dir, envNow.parent && <Text dimColor> · {envNow.parent}</Text>])}
+              {envNow.branch !== undefined &&
+                iconRow('branch', [envNow.branch, envNow.isDirty === true && <Text color="yellow"> *</Text>])}
             </Box>
           )}
         </Box>
@@ -118,10 +150,7 @@ export const register: Register = on => {
               await update($, isContextOpen, open => !open)
               await refresh($)
             })}
-            <Text>
-              {percent} <Text color="blue">{filled}</Text>
-              <Text dimColor>{empty}</Text>
-            </Text>
+            {meter('Context', contextNow.percent, percent)}
           </Box>
           {contextOpen &&
             contextNow.rows.map(row => (
@@ -135,20 +164,17 @@ export const register: Register = on => {
           {title('Usage', 'usage', usageOpen, () => update($, isUsageOpen, open => !open))}
           {usageOpen && limitsNow.length === 0 && <Text dimColor>No data yet</Text>}
           {usageOpen &&
-            limitsNow.map(limit => {
-              const color = level(limit.percent)
-              const cells = bar(limit.percent, glyphs)
-
-              return (
-                <Text>
-                  {limit.label.padEnd(labelWidth)}{' '}
-                  <Text color={color}>{`${Math.round(limit.percent)}%`.padStart(4)}</Text>{' '}
-                  <Text color={color ?? 'blue'}>{cells.filled}</Text>
-                  <Text dimColor>{cells.empty}</Text>
-                  {limit.resetsIn && <Text dimColor> resets {limit.resetsIn}</Text>}
-                </Text>
-              )
-            })}
+            limitsNow.map(limit =>
+              meter(
+                limit.label,
+                limit.percent,
+                [
+                  `${limit.label.padEnd(labelWidth)} `,
+                  <Text color={level(limit.percent)}>{`${Math.round(limit.percent)}%`.padStart(4)}</Text>,
+                ],
+                limit.resetsIn && `resets ${limit.resetsIn}`,
+              ),
+            )}
         </Box>
       </Box>
     )

@@ -17,8 +17,9 @@ const PANE = {
 
 const SURFACES = ['terminal', 'desktop'] as const
 
-// The terminal draws thin bars; surfaces with their own fonts draw shaded cells.
-const BAR = { terminal: { quarter: '━────', none: '─────' }, desktop: { quarter: '▓░░░░', none: '░░░░░' } }
+// An Svg is found by its alt, the words it stands for.
+const svgAlt = async (ui: { findAll: (q: { type: 'Svg' }) => Promise<{ props: Record<string, unknown> }[]> }, re: RegExp) =>
+  (await ui.findAll({ type: 'Svg' })).map(svg => String(svg.props.alt)).find(alt => re.test(alt))
 
 type Limit = { kind: string; percentUsed: number; resetsAt?: string }
 type Opts = { isRepo: boolean; isDirty?: boolean; percent?: number; host?: string; opened?: string[]; limits?: Limit[] }
@@ -80,7 +81,14 @@ test('the pane shows host, folder, dirty branch and context percent', async ($, 
     expect(await text(ui, /box/)).toContain('box')
     expect(await text(ui, /proj/)).toContain('~/src')
     expect(await text(ui, /main/)).toContain('*')
-    expect(await text(ui, /24%/)).toContain(BAR[surface].quarter)
+    expect(await text(ui, /24%/)).toBeDefined()
+    if (surface === 'terminal') {
+      expect(await text(ui, /24%/)).toContain('━────')
+      expect(await text(ui, /\u{F0322}/u)).toContain('box')
+    } else {
+      expect(await svgAlt(ui, /Context/)).toBe('Context 24% used')
+      expect(await svgAlt(ui, /computer/)).toBe('computer')
+    }
     await ui.unmount()
   }
 })
@@ -90,8 +98,10 @@ test('outside a repo, no hostname and no usage yet', async ($, on) => {
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ ...PANE, surface })
     expect(await text(ui, /This computer/)).toBeDefined()
-    expect(await text(ui, /\uE725/)).toBeUndefined()
-    expect(await text(ui, /—/)).toContain(BAR[surface].none)
+    expect(await text(ui, /main/)).toBeUndefined()
+    expect(await text(ui, /—/)).toBeDefined()
+    if (surface === 'terminal') expect(await text(ui, /—/)).toContain('─────')
+    else expect(await svgAlt(ui, /Context/)).toBe('Context no data')
     await ui.unmount()
   }
 })
@@ -142,13 +152,12 @@ test('the usage card shows each window with its reset', async ($, on) => {
   })
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ ...PANE, surface })
-    const five = await text(ui, /^5h/)
-    expect(five).toContain('23%')
-    expect(five).toContain(BAR[surface].quarter)
-    expect(five).toContain('resets 2h14m')
-    const seven = await text(ui, /^7d/)
-    expect(seven).toContain('96%')
-    expect(seven).toContain('resets 3d5h')
+    expect(await text(ui, /^5h/)).toContain('23%')
+    expect(await text(ui, /^7d/)).toContain('96%')
+    expect(await text(ui, /resets 2h14m/)).toBeDefined()
+    expect(await text(ui, /resets 3d5h/)).toBeDefined()
+    if (surface === 'terminal') expect(await text(ui, /^5h/)).toContain('━────')
+    else expect(await svgAlt(ui, /5h/)).toBe('5h 23% used')
     await ui.unmount()
   }
 })
