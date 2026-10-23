@@ -33,13 +33,18 @@ async function refresh($: EngineInterface): Promise<void> {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
-    await $.command.register({ name: 'rail', description: 'Open the Session pane (environment, context and usage limits)' })
+    await $.command.register({ name: 'rail', description: 'Open or close the Session pane (environment, context and usage limits)' })
     await refresh($)
 
     return started
   })
 
   on('command.run', { command: 'rail' }, async $ => {
+    if ((await $.ui.panes()).some(pane => pane.id === PANE)) {
+      await $.ui.close({ id: PANE })
+
+      return { text: 'Session pane closed.' }
+    }
     await $.ui.open({ id: PANE, title: TITLE })
 
     return { text: 'Session pane opened.' }

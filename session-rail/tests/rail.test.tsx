@@ -33,10 +33,19 @@ const run = (exitCode: number, stdout = '') => ({
 // Each hook here stands for the engine beneath the plugin.
 async function start($: Parameters<TestBody>[0], on: Parameters<TestBody>[1], opts: Opts) {
   on('command.register', () => ({ value: { command: 'rail' } }))
+  const up = new Set<string>()
   on('ui.open', (_, e) => {
     opts.opened?.push(e.id)
+    up.add(e.id)
     return { value: { isPlaced: true } }
   })
+  on('ui.close', (_, e) => {
+    up.delete(e.id)
+    return { value: undefined }
+  })
+  on('ui.panes', () => ({
+    value: [...up].map(id => ({ id, title: id, isShown: true, isFocused: false, isPlaced: true })),
+  }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('clock.now', () => ({ value: NOW }))
   on('session.cwd', () => ({ value: '/home/u/src/proj' }))
@@ -140,6 +149,23 @@ test('the pane stays closed until /rail opens it', async ($, on) => {
   })
   expect(opened).toContain('session-rail')
   expect(result.text).toBe('Session pane opened.')
+})
+
+test('/rail closes the pane it opened', async ($, on) => {
+  const opened: string[] = []
+  await start($, on, { isRepo: false, opened })
+  const rail = () =>
+    $.command.run({
+      command: 'rail',
+      args: '',
+      origin: { kind: 'composer' },
+      presentation: { isFullscreen: true, columns: 160 },
+    })
+
+  await rail()
+  expect((await rail()).text).toBe('Session pane closed.')
+  expect((await rail()).text).toBe('Session pane opened.')
+  expect(opened).toEqual(['session-rail', 'session-rail'])
 })
 
 test('the usage card shows each window with its reset', async ($, on) => {

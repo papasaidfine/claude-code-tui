@@ -32,7 +32,7 @@ claude plugin install session-rail --marketplace papasaidfine/claude-code-tui
 
 <img src="docs/images/session-rail.png" alt="The Session pane: Environment, Context (unfolded) and Usage cards" width="343">
 
-Type `/rail` to open the pane. It docks beside the chat when the terminal is wide enough, and opens above the prompt otherwise. Close it with its `✕`.
+Type `/rail` to open the pane. It docks beside the chat when the terminal is wide enough, and opens above the prompt otherwise. Close it with its `✕`, or type `/rail` again.
 
 Click a card's title (or Tab to it and press Enter while the pane has focus) to fold or unfold it.
 
