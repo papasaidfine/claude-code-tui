@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { bar, level, splitPath, tokens, until, windowLabel } from '../hooks/format'
+import { bar, level, splitPath, tokens, until, usd, windowLabel } from '../hooks/format'
 
 test('splitPath names the folder and its parent under ~', async () => {
   expect(splitPath('/home/u/src/proj', '/home/u')).toEqual({ dir: 'proj', parent: '~/src' })
@@ -45,4 +45,12 @@ test('level warns from 80% and errs from 95%', async () => {
   expect(level(79.9)).toBeUndefined()
   expect(level(80)).toBe('warning')
   expect(level(95)).toBe('error')
+})
+
+test('usd keeps four decimals below a dollar, two from a dollar up', async () => {
+  expect(usd(0)).toBe('$0.0000')
+  expect(usd(0.00013)).toBe('$0.0001')
+  expect(usd(0.4719)).toBe('$0.4719')
+  expect(usd(1)).toBe('$1.00')
+  expect(usd(12.345)).toBe('$12.35')
 })

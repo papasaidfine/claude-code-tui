@@ -52,3 +52,8 @@ export function level(percent: number): 'warning' | 'error' | undefined {
   if (percent >= 80) return 'warning'
   return undefined
 }
+
+// As /cost prints it: four decimals below a dollar.
+export function usd(n: number): string {
+  return `$${n.toFixed(n < 1 ? 4 : 2)}`
+}
