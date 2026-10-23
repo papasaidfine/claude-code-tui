@@ -19,15 +19,27 @@ export type Limit = {
   resetsIn?: string
 }
 
+export type ModelCost = { model: string; usd: number }
+
+// `total` is the engine's (/cost's); `models` are summed since `since`, the
+// session usage's `startedAt` when they began counting.
+export type CostInfo = {
+  total: number | null
+  since: number | null
+  models: ModelCost[]
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'session-rail': {
       env: Env
       context: ContextInfo
       limits: Limit[]
+      cost: CostInfo
       isEnvOpen: boolean
       isContextOpen: boolean
       isUsageOpen: boolean
+      isCostOpen: boolean
     }
   }
 }

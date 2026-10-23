@@ -1,5 +1,7 @@
 import type { TurnUsage } from 'claude-code'
 
+import type { CostInfo, ModelCost } from '../types'
+
 // USD per million tokens. Cache reads are the published rate where one is listed,
 // else 0.1× input; cache writes are priced at the 1h rate, 2× input, which the
 // main thread uses (TurnUsage does not split writes by TTL).
@@ -42,4 +44,27 @@ export function price(usage: TurnUsage): number | null {
       usage.cache_creation_input_tokens * rates.input * 2) /
     1_000_000
   )
+}
+
+// The engine's total and where its count began; a new start (a /clear) empties
+// the rows, which counted the old one.
+export function settle(now: CostInfo, total: number | null, startedAt: number): CostInfo {
+  const isSame = now.since === null || now.since === startedAt
+  return { total, since: startedAt, models: isSame ? now.models : [] }
+}
+
+export function addSpend(models: ModelCost[], model: string, usd: number): ModelCost[] {
+  if (!models.some(row => row.model === model)) return [...models, { model, usd }]
+  return models.map(row => (row.model === model ? { model, usd: row.usd + usd } : row))
+}
+
+// Below half a cent a gap is rounding, or a step the engine has not totalled yet.
+const OTHER_MIN = 0.005
+
+export function costRows(cost: CostInfo): { label: string; usd: number }[] {
+  const rows = [...cost.models]
+    .sort((a, b) => b.usd - a.usd)
+    .map(row => ({ label: row.model.replace(/^claude-/, ''), usd: row.usd }))
+  const other = (cost.total ?? 0) - cost.models.reduce((sum, row) => sum + row.usd, 0)
+  return other >= OTHER_MIN ? [...rows, { label: 'Other', usd: other }] : rows
 }
