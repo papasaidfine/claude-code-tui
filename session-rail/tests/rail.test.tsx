@@ -22,7 +22,25 @@ const svgAlt = async (ui: { findAll: (q: { type: 'Svg' }) => Promise<{ props: Re
   (await ui.findAll({ type: 'Svg' })).map(svg => String(svg.props.alt)).find(alt => re.test(alt))
 
 type Limit = { kind: string; percentUsed: number; resetsAt?: string }
-type Opts = { isRepo: boolean; isDirty?: boolean; percent?: number; host?: string; opened?: string[]; registered?: unknown[]; limits?: Limit[] }
+type Usage = {
+  model: string
+  input_tokens: number
+  output_tokens: number
+  cache_read_input_tokens: number
+  cache_creation_input_tokens: number
+}
+type Opts = {
+  isRepo: boolean
+  isDirty?: boolean
+  percent?: number
+  host?: string
+  opened?: string[]
+  registered?: unknown[]
+  limits?: Limit[]
+  cost?: number
+  startedAt?: number
+  step?: Usage
+}
 
 const NOW = Date.parse('2026-10-23T10:00:00Z')
 
@@ -63,7 +81,8 @@ async function start($: Parameters<TestBody>[0], on: Parameters<TestBody>[1], op
   })
   on('session.usage', (_, e) => ({
     value: {
-      startedAt: 0,
+      startedAt: opts.startedAt ?? 0,
+      cost: opts.cost === undefined ? undefined : { usd: opts.cost },
       rateLimits: opts.limits ?? [],
       context: {
         window: 200000,
@@ -80,11 +99,41 @@ async function start($: Parameters<TestBody>[0], on: Parameters<TestBody>[1], op
       },
     },
   }))
+  on('turn.step', async function* (_, e) {
+    return {
+      turnId: e.turnId,
+      index: e.index,
+      answer: '',
+      toolUses: [],
+      stopReason: 'end_turn' as const,
+      usage: opts.step ?? null,
+    }
+  })
   await $.session.start({ cwd: '/home/u/src/proj', surface: 'terminal', isInteractive: true })
 }
 
 const text = async (ui: { find: (t: { type: 'Text'; text: RegExp }) => Promise<{ text?: string } | undefined> }, re: RegExp) =>
   (await ui.find({ type: 'Text', text: re }))?.text
+
+const usage = (model: string, input: number, output: number, read = 0, write = 0): Usage => ({
+  model,
+  input_tokens: input,
+  output_tokens: output,
+  cache_read_input_tokens: read,
+  cache_creation_input_tokens: write,
+})
+
+// One model response, read to its end as the engine reads it.
+async function step($: Parameters<TestBody>[0], opts: Opts, answered: Usage) {
+  opts.step = answered
+  const stream = $.turn.step({ turnId: 't1', index: 0, model: answered.model, messageCount: 1 })
+  for await (const _ of stream) {
+  }
+  return stream.result
+}
+
+const texts = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text?: string }[]> }) =>
+  (await ui.findAll({ type: 'Text' })).map(t => t.text ?? '')
 
 test('the pane shows host, folder, dirty branch and context percent', async ($, on) => {
   await start($, on, { isRepo: true, isDirty: true, percent: 24, host: 'box' })
@@ -239,4 +288,63 @@ test('card borders are dim on the terminal and the inactive color elsewhere', as
   const desktop = await $.ui.mount({ ...PANE, surface: 'desktop' })
   expect((await desktop.find({ key: 'env-card' }))?.props.borderColor).toBe('inactive')
   await desktop.unmount()
+})
+
+test('the cost card splits the total by model, most expensive first', async ($, on) => {
+  const opts: Opts = { isRepo: false }
+  await start($, on, opts)
+  opts.cost = 0.4724
+  await step($, opts, usage('claude-opus-5-5', 28, 5400, 481_400, 33_500))
+  await step($, opts, usage('claude-haiku-5-5', 1200, 20))
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    const all = await texts(ui)
+    expect(all).toContain('$0.4724')
+    expect(all.indexOf('opus-5-5')).toBeGreaterThan(-1)
+    expect(all.indexOf('opus-5-5')).toBeLessThan(all.indexOf('haiku-5-5'))
+    expect(all).toContain('$0.0001')
+    expect(all).not.toContain('Other')
+    await ui.unmount()
+  }
+})
+
+test('what the rows miss shows as Other, a model without a price among it', async ($, on) => {
+  const opts: Opts = { isRepo: false }
+  await start($, on, opts)
+  opts.cost = 0.6
+  await step($, opts, usage('claude-opus-5-5', 28, 5400, 481_400, 33_500))
+  await step($, opts, usage('claude-sonnet-9', 1000, 1000))
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const all = await texts(ui)
+  expect(all).toContain('Other')
+  expect(all).toContain('$0.1276')
+  expect(all).not.toContain('sonnet-9')
+  await ui.unmount()
+})
+
+test('a session count that starts over empties the model rows', async ($, on) => {
+  const opts: Opts = { isRepo: false }
+  await start($, on, opts)
+  opts.cost = 0.4724
+  await step($, opts, usage('claude-opus-5-5', 28, 5400, 481_400, 33_500))
+  opts.startedAt = 9000
+  opts.cost = 0.0001
+  await step($, opts, usage('claude-haiku-5-5', 1200, 20))
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const all = await texts(ui)
+  expect(all).not.toContain('opus-5-5')
+  expect(all).toContain('haiku-5-5')
+  await ui.unmount()
+})
+
+test('the cost card before any spend, and closed', async ($, on) => {
+  const opts: Opts = { isRepo: false }
+  await start($, on, opts)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect((await ui.find({ key: 'cost' }))?.text).toBe('▾')
+  expect(await text(ui, /No spend yet/)).toBeDefined()
+
+  await ui.press({ key: 'cost' })
+  expect(await text(ui, /No spend yet/)).toBeUndefined()
+  await ui.unmount()
 })

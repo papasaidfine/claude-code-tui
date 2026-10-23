@@ -1,9 +1,10 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, RenderChildren } from 'claude-code'
+import type { EngineInterface, Register, RenderChildren, TurnUsage } from 'claude-code'
 
-import type { ContextInfo, Env, Limit } from '../types'
+import type { ContextInfo, CostInfo, Env, Limit } from '../types'
 import { readEnv, readUsage } from './collect'
-import { bar, level, tokens } from './format'
+import { bar, level, tokens, usd } from './format'
+import { addSpend, costRows, price, settle } from './pricing'
 import { COLOR, ICON_ALT, ICON_SVG, meterSvg } from './svg'
 
 const PANE = 'session-rail'
@@ -15,9 +16,11 @@ const ICON = { host: '\u{F0322}', folder: '\uF114', branch: '\uE725' }
 const env = atom({ plugin: 'session-rail', key: 'env' } as const, { host: '', dir: '', parent: '' } as Env)
 const context = atom({ plugin: 'session-rail', key: 'context' } as const, { percent: null, rows: [] } as ContextInfo)
 const limits = atom({ plugin: 'session-rail', key: 'limits' } as const, [] as Limit[])
+const cost = atom({ plugin: 'session-rail', key: 'cost' } as const, { total: null, since: null, models: [] } as CostInfo)
 const isEnvOpen = atom({ plugin: 'session-rail', key: 'isEnvOpen' } as const, true)
 const isContextOpen = atom({ plugin: 'session-rail', key: 'isContextOpen' } as const, false)
 const isUsageOpen = atom({ plugin: 'session-rail', key: 'isUsageOpen' } as const, true)
+const isCostOpen = atom({ plugin: 'session-rail', key: 'isCostOpen' } as const, true)
 
 // A source that fails keeps its last good value.
 async function refresh($: EngineInterface): Promise<void> {
@@ -27,7 +30,19 @@ async function refresh($: EngineInterface): Promise<void> {
   if (nextUsage.status === 'fulfilled') {
     await update($, context, () => nextUsage.value.context)
     await update($, limits, () => nextUsage.value.limits)
+    const { spent } = nextUsage.value
+    await update($, cost, now => settle(now, spent.usd, spent.startedAt))
   }
+}
+
+// Prices one response by its model; reads the engine's total beside it.
+async function record($: EngineInterface, usage: TurnUsage): Promise<void> {
+  const priced = price(usage)
+  const { cost: spent, startedAt } = await $.session.usage()
+  await update($, cost, now => {
+    const settled = settle(now, spent?.usd ?? now.total, startedAt)
+    return priced === null ? settled : { ...settled, models: addSpend(settled.models, usage.model, priced) }
+  })
 }
 
 export const register: Register = on => {
@@ -62,6 +77,14 @@ export const register: Register = on => {
     return done
   })
 
+  // Each model response, on the main loop and in subagents, with its model's usage.
+  on('turn.step', async function* ($, e, next) {
+    const step = yield* next(e)
+    if (step.usage) await record($, step.usage)
+
+    return step
+  })
+
   // The branch or the working tree may have changed.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const ran = await next(e)
@@ -73,13 +96,15 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const ui = $.ui.resolve(e)
     const { Box, Text, Button } = ui
-    const [envNow, contextNow, limitsNow, envOpen, contextOpen, usageOpen] = await Promise.all([
+    const [envNow, contextNow, limitsNow, costNow, envOpen, contextOpen, usageOpen, costOpen] = await Promise.all([
       read($, env),
       read($, context),
       read($, limits),
+      read($, cost),
       read($, isEnvOpen),
       read($, isContextOpen),
       read($, isUsageOpen),
+      read($, isCostOpen),
     ])
     const percent = contextNow.percent === null ? '—' : `${Math.round(contextNow.percent)}%`
     // Every surface but the terminal has Svg: drawn icons and meters there, since its
@@ -87,6 +112,7 @@ export const register: Register = on => {
     const isTerminal = e.surface === 'terminal'
     const Svg = !isTerminal && 'Svg' in ui ? ui.Svg : undefined
     const labelWidth = Math.max(0, ...limitsNow.map(limit => limit.label.length))
+    const spend = costRows(costNow)
 
     // The terminal's box-drawing borders already leave half a cell between cards and
     // draw dim well; a surface that draws borders itself needs both spelled out.
@@ -185,6 +211,20 @@ export const register: Register = on => {
                 limit.resetsIn && `resets ${limit.resetsIn}`,
               ),
             )}
+        </Box>
+        <Box key="cost-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
+          <Box flexDirection="row" justifyContent="space-between">
+            {title('Cost', 'cost', costOpen, () => update($, isCostOpen, open => !open))}
+            <Text>{costNow.total === null ? '—' : usd(costNow.total)}</Text>
+          </Box>
+          {costOpen && spend.length === 0 && <Text dimColor>No spend yet</Text>}
+          {costOpen &&
+            spend.map(row => (
+              <Box flexDirection="row" justifyContent="space-between">
+                <Text dimColor>{row.label}</Text>
+                <Text>{usd(row.usd)}</Text>
+              </Box>
+            ))}
         </Box>
       </Box>
     )

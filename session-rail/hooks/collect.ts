@@ -32,8 +32,8 @@ export async function readEnv($: EngineInterface): Promise<Env> {
 export async function readUsage(
   $: EngineInterface,
   withBreakdown: boolean,
-): Promise<{ context: ContextInfo; limits: Limit[] }> {
-  const [{ context, rateLimits }, now] = await Promise.all([
+): Promise<{ context: ContextInfo; limits: Limit[]; spent: { usd: number | null; startedAt: number } }> {
+  const [{ context, rateLimits, cost, startedAt }, now] = await Promise.all([
     $.session.usage(withBreakdown ? { breakdown: 'summary' } : undefined),
     $.clock.now(),
   ])
@@ -45,5 +45,9 @@ export async function readUsage(
     percent: limit.percentUsed,
     resetsIn: limit.resetsAt ? until(limit.resetsAt, now) : undefined,
   }))
-  return { context: { percent: context.percent ?? null, rows }, limits }
+  return {
+    context: { percent: context.percent ?? null, rows },
+    limits,
+    spent: { usd: cost?.usd ?? null, startedAt },
+  }
 }
