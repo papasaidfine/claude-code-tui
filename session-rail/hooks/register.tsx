@@ -33,7 +33,6 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     await $.command.register({ name: 'rail', description: 'Open the Session pane (environment, context and usage limits)' })
-    void $.ui.open({ id: PANE, title: TITLE })
     await refresh($)
 
     return started

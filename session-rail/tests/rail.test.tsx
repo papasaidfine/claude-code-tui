@@ -114,10 +114,10 @@ test('closing the environment card hides its rows', async ($, on) => {
   await ui.unmount()
 })
 
-test('/rail opens the pane', async ($, on) => {
+test('the pane stays closed until /rail opens it', async ($, on) => {
   const opened: string[] = []
   await start($, on, { isRepo: false, opened })
-  opened.length = 0
+  expect(opened).toEqual([])
 
   const result = await $.command.run({
     command: 'rail',

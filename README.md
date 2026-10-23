@@ -10,7 +10,7 @@ Mods that bring pieces of Claude Desktop's Claude Code UI to the Claude Code CLI
 
 - Claude Code CLI 2.1.308 or newer (mods use the function-hooks plugin API, which is in early access)
 - A [Nerd Font](https://www.nerdfonts.com/) in your terminal, for the icons
-- For the pane to dock beside the chat: the fullscreen layout and a terminal at least 110 columns wide. Narrower, or on the main screen, `/rail` opens it above the prompt.
+- For the pane to dock beside the chat: the fullscreen layout and a terminal at least 110 columns wide
 
 ## Install
 
@@ -32,7 +32,7 @@ claude plugin install session-rail --marketplace papasaidfine/claude-code-tui
 
 <img src="docs/images/session-rail.png" alt="The Session pane: Environment, Context (unfolded) and Usage cards" width="343">
 
-The pane opens by itself when a session starts, if the terminal is wide enough. Type `/rail` to open it at any time.
+Type `/rail` to open the pane. It docks beside the chat when the terminal is wide enough, and opens above the prompt otherwise. Close it with its `✕`.
 
 Click a card's title (or Tab to it and press Enter while the pane has focus) to fold or unfold it.
 
