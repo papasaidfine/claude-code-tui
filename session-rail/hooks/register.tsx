@@ -73,8 +73,12 @@ export const register: Register = on => {
     const { filled, empty } = bar(contextNow.percent)
     const labelWidth = Math.max(0, ...limitsNow.map(limit => limit.label.length))
 
+    // The terminal's box-drawing borders already leave half a cell between cards;
+    // a surface that draws borders itself needs the gap spelled out.
+    const spacing = e.surface === 'terminal' ? {} : { gap: 1 }
+
     return (
-      <Box flexDirection="column">
+      <Box key="cards" flexDirection="column" {...spacing}>
         <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
           <Button key="env" plain onPress={() => update($, isEnvOpen, open => !open)}>
             <Text bold>Environment {envOpen ? '▾' : '▸'}</Text>

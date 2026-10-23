@@ -159,3 +159,15 @@ test('the usage card before any reading, and closed', async ($, on) => {
   expect(await text(ui, /No data yet/)).toBeUndefined()
   await ui.unmount()
 })
+
+test('cards are spaced apart where borders are drawn by the surface, not on the terminal', async ($, on) => {
+  await start($, on, { isRepo: false })
+  for (const surface of ['desktop', 'vscode'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect((await ui.find({ key: 'cards' }))?.props.gap).toBe(1)
+    await ui.unmount()
+  }
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect((await ui.find({ key: 'cards' }))?.props.gap).toBeUndefined()
+  await ui.unmount()
+})
