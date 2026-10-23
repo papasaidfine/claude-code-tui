@@ -17,6 +17,9 @@ const PANE = {
 
 const SURFACES = ['terminal', 'desktop'] as const
 
+// The terminal draws thin bars; surfaces with their own fonts draw shaded cells.
+const BAR = { terminal: { quarter: '━────', none: '─────' }, desktop: { quarter: '▓░░░░', none: '░░░░░' } }
+
 type Limit = { kind: string; percentUsed: number; resetsAt?: string }
 type Opts = { isRepo: boolean; isDirty?: boolean; percent?: number; host?: string; opened?: string[]; limits?: Limit[] }
 
@@ -77,7 +80,7 @@ test('the pane shows host, folder, dirty branch and context percent', async ($, 
     expect(await text(ui, /box/)).toContain('box')
     expect(await text(ui, /proj/)).toContain('~/src')
     expect(await text(ui, /main/)).toContain('*')
-    expect(await text(ui, /24%/)).toContain('━────')
+    expect(await text(ui, /24%/)).toContain(BAR[surface].quarter)
     await ui.unmount()
   }
 })
@@ -88,7 +91,7 @@ test('outside a repo, no hostname and no usage yet', async ($, on) => {
     const ui = await $.ui.mount({ ...PANE, surface })
     expect(await text(ui, /This computer/)).toBeDefined()
     expect(await text(ui, /\uE725/)).toBeUndefined()
-    expect(await text(ui, /—/)).toContain('─────')
+    expect(await text(ui, /—/)).toContain(BAR[surface].none)
     await ui.unmount()
   }
 })
@@ -141,7 +144,7 @@ test('the usage card shows each window with its reset', async ($, on) => {
     const ui = await $.ui.mount({ ...PANE, surface })
     const five = await text(ui, /^5h/)
     expect(five).toContain('23%')
-    expect(five).toContain('━────')
+    expect(five).toContain(BAR[surface].quarter)
     expect(five).toContain('resets 2h14m')
     const seven = await text(ui, /^7d/)
     expect(seven).toContain('96%')
@@ -170,4 +173,25 @@ test('cards are spaced apart where borders are drawn by the surface, not on the 
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect((await ui.find({ key: 'cards' }))?.props.gap).toBeUndefined()
   await ui.unmount()
+})
+
+test('titles are text beside a one-glyph toggle, so they line up with the rows', async ($, on) => {
+  await start($, on, { isRepo: false })
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect((await ui.find({ key: 'env' }))?.text).toBe('▾')
+    expect((await ui.find({ key: 'context' }))?.text).toBe('▸')
+    expect(await text(ui, /^Environment$/)).toBe('Environment')
+    await ui.unmount()
+  }
+})
+
+test('card borders are dim on the terminal and the inactive color elsewhere', async ($, on) => {
+  await start($, on, { isRepo: false })
+  const terminal = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect((await terminal.find({ key: 'env-card' }))?.props.borderDimColor).toBe(true)
+  await terminal.unmount()
+  const desktop = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect((await desktop.find({ key: 'env-card' }))?.props.borderColor).toBe('inactive')
+  await desktop.unmount()
 })

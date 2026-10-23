@@ -1,6 +1,6 @@
 {
   "name": "session-rail",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A Session pane beside the chat: environment, context and usage limits, like Claude Desktop's session rail",
   "author": { "name": "papasaidfine" },
   "license": "MIT",

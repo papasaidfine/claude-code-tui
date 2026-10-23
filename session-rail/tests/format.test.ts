@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { bar, level, splitPath, tokens, until, windowLabel } from '../hooks/format'
+import { SHADE, bar, level, splitPath, tokens, until, windowLabel } from '../hooks/format'
 
 test('splitPath names the folder and its parent under ~', async () => {
   expect(splitPath('/home/u/src/proj', '/home/u')).toEqual({ dir: 'proj', parent: '~/src' })
@@ -16,6 +16,10 @@ test('bar splits five thin cells by percent', async () => {
   expect(bar(24)).toEqual({ filled: '━', empty: '────' })
   expect(bar(50)).toEqual({ filled: '━━━', empty: '──' })
   expect(bar(130)).toEqual({ filled: '━━━━━', empty: '' })
+})
+
+test('bar draws shaded cells when asked', async () => {
+  expect(bar(24, SHADE)).toEqual({ filled: '▓', empty: '░░░░' })
 })
 
 test('tokens abbreviates thousands', async () => {

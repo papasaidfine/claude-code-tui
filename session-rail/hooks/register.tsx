@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { ContextInfo, Env, Limit } from '../types'
 import { readEnv, readUsage } from './collect'
-import { bar, level, tokens } from './format'
+import { SHADE, THIN, bar, level, tokens } from './format'
 
 const PANE = 'session-rail'
 const TITLE = 'Session'
@@ -70,19 +70,32 @@ export const register: Register = on => {
       read($, isUsageOpen),
     ])
     const percent = contextNow.percent === null ? '—' : `${Math.round(contextNow.percent)}%`
-    const { filled, empty } = bar(contextNow.percent)
+    const isTerminal = e.surface === 'terminal'
+    // The terminal draws thin box-drawing bars well; other surfaces' fonts thin them out.
+    const glyphs = isTerminal ? THIN : SHADE
+    const { filled, empty } = bar(contextNow.percent, glyphs)
     const labelWidth = Math.max(0, ...limitsNow.map(limit => limit.label.length))
 
-    // The terminal's box-drawing borders already leave half a cell between cards;
-    // a surface that draws borders itself needs the gap spelled out.
-    const spacing = e.surface === 'terminal' ? {} : { gap: 1 }
+    // The terminal's box-drawing borders already leave half a cell between cards and
+    // draw dim well; a surface that draws borders itself needs both spelled out.
+    const spacing = isTerminal ? {} : { gap: 1 }
+    const border = isTerminal ? { borderDimColor: true } : { borderColor: 'inactive' }
+
+    // A desktop draws every Button natively, padding and all, so only the arrow is one:
+    // the title stays text, in line with the card's rows.
+    const title = (name: string, key: string, isOpen: boolean, onPress: () => unknown) => (
+      <Box flexDirection="row" gap={1}>
+        <Text bold>{name}</Text>
+        <Button key={key} plain onPress={onPress}>
+          {isOpen ? '▾' : '▸'}
+        </Button>
+      </Box>
+    )
 
     return (
       <Box key="cards" flexDirection="column" {...spacing}>
-        <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
-          <Button key="env" plain onPress={() => update($, isEnvOpen, open => !open)}>
-            <Text bold>Environment {envOpen ? '▾' : '▸'}</Text>
-          </Button>
+        <Box key="env-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
+          {title('Environment', 'env', envOpen, () => update($, isEnvOpen, open => !open))}
           {envOpen && (
             <Box flexDirection="column">
               <Text>{ICON.host} {envNow.host}</Text>
@@ -99,18 +112,12 @@ export const register: Register = on => {
             </Box>
           )}
         </Box>
-        <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
+        <Box key="context-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
           <Box flexDirection="row" justifyContent="space-between">
-            <Button
-              key="context"
-              plain
-              onPress={async () => {
-                await update($, isContextOpen, open => !open)
-                await refresh($)
-              }}
-            >
-              <Text bold>Context {contextOpen ? '▾' : '▸'}</Text>
-            </Button>
+            {title('Context', 'context', contextOpen, async () => {
+              await update($, isContextOpen, open => !open)
+              await refresh($)
+            })}
             <Text>
               {percent} <Text color="blue">{filled}</Text>
               <Text dimColor>{empty}</Text>
@@ -124,15 +131,13 @@ export const register: Register = on => {
               </Box>
             ))}
         </Box>
-        <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
-          <Button key="usage" plain onPress={() => update($, isUsageOpen, open => !open)}>
-            <Text bold>Usage {usageOpen ? '▾' : '▸'}</Text>
-          </Button>
+        <Box key="usage-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
+          {title('Usage', 'usage', usageOpen, () => update($, isUsageOpen, open => !open))}
           {usageOpen && limitsNow.length === 0 && <Text dimColor>No data yet</Text>}
           {usageOpen &&
             limitsNow.map(limit => {
               const color = level(limit.percent)
-              const cells = bar(limit.percent)
+              const cells = bar(limit.percent, glyphs)
 
               return (
                 <Text>
