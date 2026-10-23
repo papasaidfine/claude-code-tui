@@ -33,7 +33,12 @@ async function refresh($: EngineInterface): Promise<void> {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
-    await $.command.register({ name: 'rail', description: 'Open or close the Session pane (environment, context and usage limits)' })
+    await $.command.register({
+      name: 'rail',
+      description: 'Open or close the Session pane (environment, context and usage limits)',
+      // Opening or closing the pane touches nothing of the turn, so it need not wait for it.
+      immediate: true,
+    })
     await refresh($)
 
     return started

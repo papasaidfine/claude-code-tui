@@ -16,7 +16,8 @@ A pane (`$.ui.open({ id: 'session-rail', title: 'Session' })`) drawn by a
 `ui.render` hook on `{ component: 'Pane', requestId: 'session-rail' }`.
 
 - Never opened unasked: `/rail` (registered in `session.start`, answered by
-  `command.run`) opens the pane, at any width, and closes it when it is open. The data is refreshed at
+  `command.run`) opens the pane, at any width, and closes it when it is open.
+  It is registered `immediate`, so it runs mid-turn instead of waiting. The data is refreshed at
   `session.start` regardless, so the pane is filled when it opens.
 - The pane's background is the engine's: the docked sidebar is painted with the
   theme key `composerSidebarBackground`, which a mod cannot change. A custom theme
@@ -119,7 +120,8 @@ keeps the last good values. Nothing throws out of a hook.
   formatting, warning levels) and the pane through the plugin's own `$`, with the
   test's `on(...)` hooks answering each engine call: all three cards, toggling,
   outside a git repo, no hostname, no usage yet, deferred categories left out,
-  the pane staying closed until `/rail`, and `/rail` closing it again.
+  the pane staying closed until `/rail`, `/rail` closing it again, and `/rail`
+  registered to run mid-turn.
 
 ## Location
 

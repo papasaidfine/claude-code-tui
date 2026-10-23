@@ -22,7 +22,7 @@ const svgAlt = async (ui: { findAll: (q: { type: 'Svg' }) => Promise<{ props: Re
   (await ui.findAll({ type: 'Svg' })).map(svg => String(svg.props.alt)).find(alt => re.test(alt))
 
 type Limit = { kind: string; percentUsed: number; resetsAt?: string }
-type Opts = { isRepo: boolean; isDirty?: boolean; percent?: number; host?: string; opened?: string[]; limits?: Limit[] }
+type Opts = { isRepo: boolean; isDirty?: boolean; percent?: number; host?: string; opened?: string[]; registered?: unknown[]; limits?: Limit[] }
 
 const NOW = Date.parse('2026-10-23T10:00:00Z')
 
@@ -32,7 +32,10 @@ const run = (exitCode: number, stdout = '') => ({
 
 // Each hook here stands for the engine beneath the plugin.
 async function start($: Parameters<TestBody>[0], on: Parameters<TestBody>[1], opts: Opts) {
-  on('command.register', () => ({ value: { command: 'rail' } }))
+  on('command.register', (_, e) => {
+    opts.registered?.push(e)
+    return { value: { command: 'rail' } }
+  })
   const up = new Set<string>()
   on('ui.open', (_, e) => {
     opts.opened?.push(e.id)
@@ -166,6 +169,13 @@ test('/rail closes the pane it opened', async ($, on) => {
   expect((await rail()).text).toBe('Session pane closed.')
   expect((await rail()).text).toBe('Session pane opened.')
   expect(opened).toEqual(['session-rail', 'session-rail'])
+})
+
+test('/rail is registered to run at once, even mid-turn', async ($, on) => {
+  const registered: unknown[] = []
+  await start($, on, { isRepo: false, registered })
+
+  expect(registered).toEqual([expect.objectContaining({ name: 'rail', immediate: true })])
 })
 
 test('the usage card shows each window with its reset', async ($, on) => {
