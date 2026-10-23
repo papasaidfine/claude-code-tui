@@ -30,19 +30,7 @@ claude plugin install session-rail --marketplace papasaidfine/claude-code-tui
 
 ## session-rail
 
-```
-╭ Environment ▾ ───────────────╮
-│ 󰌢 my-laptop                  │
-│  my-project · ~/src         │
-│  main *                     │
-╰──────────────────────────────╯
-╭ Context ▸          24% ━──── ╮
-╰──────────────────────────────╯
-╭ Usage ▾ ─────────────────────╮
-│ 5h  23%  ━────  resets 2h14m │
-│ 7d  61%  ━━━──  resets 3d5h  │
-╰──────────────────────────────╯
-```
+<img src="docs/images/session-rail.png" alt="The Session pane: Environment, Context (unfolded) and Usage cards" width="343">
 
 The pane opens by itself when a session starts, if the terminal is wide enough. Type `/rail` to open it at any time.
 
