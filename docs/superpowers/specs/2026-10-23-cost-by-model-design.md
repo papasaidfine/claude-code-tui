@@ -44,17 +44,21 @@ main thread writes 1h entries.
   expensive first, the label the model id without its `claude-` prefix.
 - "Other" row: engine total minus the sum of the model rows, shown only when it
   is at least $0.005. It holds what the mod could not price: models missing
-  from the table, requests made before the mod loaded, and requests that do not
-  pass through `turn.step` (title generation and similar side calls).
+  from the table (partner ids such as Bedrock's `anthropic.` ones included),
+  requests made before the mod loaded, requests that do not pass through
+  `turn.step` (title generation and similar side calls), and fast mode's
+  premium (`TurnUsage` has no speed field, so fast responses are priced at
+  the standard rate).
 - No rows yet and no Other: `No spend yet` (distinct from the Usage card's `No data yet`).
 - Amounts: `$` and 4 decimals below $1, 2 decimals from $1 up.
 
 ## Pricing (`hooks/pricing.ts`)
 
-A table keyed by model id prefix, longest prefix first so `claude-opus-5-5`
-does not match `claude-opus-5`. Rates in USD per million tokens:
+A table keyed by model id. A dated snapshot (`-YYYYMMDD`) takes its model's
+rates; any other id, a newer point release such as `claude-opus-5-6`
+included, is not in the table. Rates in USD per million tokens:
 
-| Prefix              | Input | Output | Cache read |
+| Model               | Input | Output | Cache read |
 | ------------------- | ----- | ------ | ---------- |
 | `claude-fable-5-1`  | 10    | 50     | 0.25       |
 | `claude-fable-5`    | 10    | 50     | 1.00       |

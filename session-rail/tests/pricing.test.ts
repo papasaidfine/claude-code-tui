@@ -18,7 +18,7 @@ test('price matches /cost for an Opus 5.5 session, cache writes at the 1h rate',
   expect(round(price(usage('claude-opus-5-5', 28, 5400, 481_400, 33_500)), 6)).toBe(0.472392)
 })
 
-test('a longer prefix wins: Opus 5.5 does not take Opus 5 rates', async () => {
+test('a dated snapshot takes its model rates, and Opus 5.5 is not Opus 5', async () => {
   expect(round(price(usage('claude-opus-5-5', 1_000_000, 0)), 6)).toBe(4)
   expect(round(price(usage('claude-opus-5', 1_000_000, 0)), 6)).toBe(5)
   expect(round(price(usage('claude-haiku-4-5-20251001', 1_000_000, 0)), 6)).toBe(1)
@@ -35,6 +35,9 @@ test('Haiku 5.5 bills a prompt above 100K tokens at the higher tier', async () =
 test('a model the table lacks has no price', async () => {
   expect(price(usage('claude-sonnet-9', 1000, 1000))).toBeNull()
   expect(price(usage('claude-opus-55', 1000, 1000))).toBeNull()
+  // A newer point release is not an older one with a suffix: it waits for the table.
+  expect(price(usage('claude-opus-5-6', 1000, 1000))).toBeNull()
+  expect(price(usage('claude-fable-5-2', 1000, 1000))).toBeNull()
 })
 
 const EMPTY = { total: null, since: null, models: [] }

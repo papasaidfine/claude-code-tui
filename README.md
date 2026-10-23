@@ -58,7 +58,7 @@ Rate limits are reported for Claude subscription accounts. With an API key there
 
 What the session has cost so far, the same total `/cost` prints. Unfolded, it lists each model the session used, most expensive first.
 
-The per-model amounts are estimated from each response's token counts at list prices, with prompt-cache writes priced at the 1-hour rate. They can drift from `/cost`'s per-model figures by a little. Spend the mod could not attribute to a model shows as **Other**: requests made before the mod loaded, models it has no price for, and small side requests such as session titles. The total is always the engine's own.
+The per-model amounts are estimated from each response's token counts at list prices, with prompt-cache writes priced at the 1-hour rate. They can drift from `/cost`'s per-model figures by a little. Spend the mod could not attribute to a model shows as **Other**: requests made before the mod loaded, models it has no price for, small side requests such as session titles, and the premium on fast-mode responses. The total is always the engine's own.
 
 `/clear` starts the count over, as it does for `/cost`.
 

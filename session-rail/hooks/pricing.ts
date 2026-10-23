@@ -28,13 +28,11 @@ const LONG_RATES: Record<string, Rates> = {
   'claude-haiku-5-5': { input: 0.5, output: 2.5, read: 0.05 },
 }
 
-// Longest first, so claude-opus-5-5 is not read as claude-opus-5.
-const FAMILIES = Object.entries(RATES).sort(([a], [b]) => b.length - a.length)
-
 export function price(usage: TurnUsage): number | null {
-  const found = FAMILIES.find(([prefix]) => usage.model === prefix || usage.model.startsWith(`${prefix}-`))
-  if (found === undefined) return null
-  const [name, base] = found
+  // A dated snapshot takes its model's rates; any other suffix is a model the table lacks.
+  const name = usage.model.replace(/-\d{8}$/, '')
+  const base = RATES[name]
+  if (base === undefined) return null
   const prompt = usage.input_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens
   const rates = (prompt > LONG_PROMPT && LONG_RATES[name]) || base
   return (

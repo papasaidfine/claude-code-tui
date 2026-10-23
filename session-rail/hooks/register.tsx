@@ -80,7 +80,8 @@ export const register: Register = on => {
   // Each model response, on the main loop and in subagents, with its model's usage.
   on('turn.step', async function* ($, e, next) {
     const step = yield* next(e)
-    if (step.usage) await record($, step.usage)
+    // A failed hook is run past with next(e), which here would request the step again.
+    if (step.usage) await record($, step.usage).catch(() => undefined)
 
     return step
   })

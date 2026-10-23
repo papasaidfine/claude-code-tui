@@ -40,6 +40,8 @@ type Opts = {
   cost?: number
   startedAt?: number
   step?: Usage
+  isUsageDenied?: boolean
+  requests?: number
 }
 
 const NOW = Date.parse('2026-10-23T10:00:00Z')
@@ -79,7 +81,7 @@ async function start($: Parameters<TestBody>[0], on: Parameters<TestBody>[1], op
     if (cmd === 'git status --porcelain') return run(0, opts.isDirty ? ' M a.ts\n' : '')
     return run(1)
   })
-  on('session.usage', (_, e) => ({
+  on('session.usage', (_, e) => opts.isUsageDenied ? { deny: 'not now' } : ({
     value: {
       startedAt: opts.startedAt ?? 0,
       cost: opts.cost === undefined ? undefined : { usd: opts.cost },
@@ -100,6 +102,8 @@ async function start($: Parameters<TestBody>[0], on: Parameters<TestBody>[1], op
     },
   }))
   on('turn.step', async function* (_, e) {
+    opts.requests = (opts.requests ?? 0) + 1
+    yield { kind: 'text' as const, index: 0, text: 'hi' }
     return {
       turnId: e.turnId,
       index: e.index,
@@ -127,9 +131,11 @@ const usage = (model: string, input: number, output: number, read = 0, write = 0
 async function step($: Parameters<TestBody>[0], opts: Opts, answered: Usage) {
   opts.step = answered
   const stream = $.turn.step({ turnId: 't1', index: 0, model: answered.model, messageCount: 1 })
-  for await (const _ of stream) {
-  }
-  return stream.result
+  const chunks: unknown[] = []
+  // Read by hand: the generator's return value is the step's result.
+  let read = await stream.next()
+  for (; !read.done; read = await stream.next()) chunks.push(read.value)
+  return { chunks, result: read.value }
 }
 
 const texts = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text?: string }[]> }) =>
@@ -347,4 +353,22 @@ test('the cost card before any spend, and closed', async ($, on) => {
   await ui.press({ key: 'cost' })
   expect(await text(ui, /No spend yet/)).toBeUndefined()
   await ui.unmount()
+})
+
+test('a step passes through whole, its chunks and result as the engine gave them', async ($, on) => {
+  const opts: Opts = { isRepo: false }
+  await start($, on, opts)
+  const { chunks, result } = await step($, opts, usage('claude-opus-5-5', 10, 10))
+  expect(chunks).toEqual([expect.objectContaining({ kind: 'text', text: 'hi' })])
+  expect(result.usage?.model).toBe('claude-opus-5-5')
+})
+
+// A failed hook is run past with next(e): on turn.step, a second model request.
+test('a step whose cost cannot be read is not requested again', async ($, on) => {
+  const opts: Opts = { isRepo: false }
+  await start($, on, opts)
+  opts.isUsageDenied = true
+  const { result } = await step($, opts, usage('claude-opus-5-5', 10, 10))
+  expect(result.stopReason).toBe('end_turn')
+  expect(opts.requests).toBe(1)
 })
