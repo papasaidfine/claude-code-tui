@@ -41,6 +41,14 @@ export function until(resetsAt: string, now: number): string | undefined {
   return `${Math.floor(left / DAY)}d${Math.floor((left % DAY) / HOUR)}h`
 }
 
+// claude-<family>-<major>[-<minor>][-<date>], as Fable 5.1; any other id less its claude-.
+export function modelName(id: string): string {
+  const parts = /^claude-([a-z]+)-(\d+)(?:-(\d))?(?:-\d{8})?$/.exec(id)
+  if (!parts) return id.replace(/^claude-/, '')
+  const [, family = '', major, minor] = parts
+  return `${family[0]?.toUpperCase()}${family.slice(1)} ${major}${minor === undefined ? '' : `.${minor}`}`
+}
+
 const WINDOWS: Record<string, string> = { five_hour: '5h', seven_day: '7d', spend_limit: 'spend' }
 
 export function windowLabel(kind: string): string {

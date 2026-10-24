@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { bar, level, splitPath, tokens, until, usd, windowLabel } from '../hooks/format'
+import { bar, level, modelName, splitPath, tokens, until, usd, windowLabel } from '../hooks/format'
 
 test('splitPath names the folder and its parent under ~', async () => {
   expect(splitPath('/home/u/src/proj', '/home/u')).toEqual({ dir: 'proj', parent: '~/src' })
@@ -53,4 +53,14 @@ test('usd keeps four decimals below a dollar, two from a dollar up', async () =>
   expect(usd(0.4719)).toBe('$0.4719')
   expect(usd(1)).toBe('$1.00')
   expect(usd(12.345)).toBe('$12.35')
+})
+
+test('modelName reads a model id as its family and version', async () => {
+  expect(modelName('claude-fable-5-1')).toBe('Fable 5.1')
+  expect(modelName('claude-opus-5-5')).toBe('Opus 5.5')
+  expect(modelName('claude-opus-5')).toBe('Opus 5')
+  expect(modelName('claude-haiku-4-5-20251001')).toBe('Haiku 4.5')
+  // Any other shape keeps its id, less the claude- prefix.
+  expect(modelName('claude-3-5-sonnet-20241022')).toBe('3-5-sonnet-20241022')
+  expect(modelName('gpt-x')).toBe('gpt-x')
 })

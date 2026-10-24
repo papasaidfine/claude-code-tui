@@ -1,6 +1,7 @@
 import type { TurnUsage } from 'claude-code'
 
 import type { CostInfo, ModelCost } from '../types'
+import { modelName } from './format'
 
 // USD per million tokens. Cache reads are the published rate where one is listed,
 // else 0.1× input; cache writes are priced at the 1h rate, 2× input, which the
@@ -62,7 +63,7 @@ const OTHER_MIN = 0.005
 export function costRows(cost: CostInfo): { label: string; usd: number }[] {
   const rows = [...cost.models]
     .sort((a, b) => b.usd - a.usd)
-    .map(row => ({ label: row.model.replace(/^claude-/, ''), usd: row.usd }))
+    .map(row => ({ label: modelName(row.model), usd: row.usd }))
   const other = (cost.total ?? 0) - cost.models.reduce((sum, row) => sum + row.usd, 0)
   return other >= OTHER_MIN ? [...rows, { label: 'Other', usd: other }] : rows
 }

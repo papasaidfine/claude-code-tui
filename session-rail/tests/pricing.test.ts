@@ -59,14 +59,14 @@ test('addSpend adds to the model row, or starts one', async () => {
   ])
 })
 
-test('costRows: most expensive first, claude- dropped, Other for what the rows miss', async () => {
+test('costRows: most expensive first, by model name, Other for what the rows miss', async () => {
   const models = [
     { model: 'claude-haiku-5-5', usd: 0.0001 },
     { model: 'claude-opus-5-5', usd: 0.4718 },
   ]
   const modelRows = [
-    { label: 'opus-5-5', usd: 0.4718 },
-    { label: 'haiku-5-5', usd: 0.0001 },
+    { label: 'Opus 5.5', usd: 0.4718 },
+    { label: 'Haiku 5.5', usd: 0.0001 },
   ]
   expect(costRows({ total: 0.4719, since: 0, models })).toEqual(modelRows)
   const rows = costRows({ total: 0.5, since: 0, models })
