@@ -115,16 +115,22 @@ export const register: Register = on => {
     const labelWidth = Math.max(0, ...limitsNow.map(limit => limit.label.length))
     const spend = costRows(costNow)
 
-    // The terminal sets each card in a dim box-drawing border, which already leaves
-    // half a cell between cards. A surface that draws its own borders nests them inside
-    // the pane's frame, so there the cards go unboxed, set apart by space alone.
-    const spacing = isTerminal ? {} : ({ gap: 'lg' } as const)
-    const card = isTerminal ? ({ borderStyle: 'round', borderDimColor: true, paddingX: 1 } as const) : {}
+    // The terminal's box-drawing borders already leave half a cell between cards and
+    // draw dim well; the desktop, which draws borders itself, needs both spelled out.
+    // VS Code frames the pane itself, and cards boxed inside that frame read as boxes
+    // in boxes: there they go unboxed, set apart by space alone.
+    const isFramed = e.surface === 'vscode'
+    const spacing = isTerminal ? {} : isFramed ? ({ gap: 'lg' } as const) : { gap: 1 }
+    const card = isTerminal
+      ? ({ borderStyle: 'round', borderDimColor: true, paddingX: 1 } as const)
+      : isFramed
+        ? {}
+        : ({ borderStyle: 'round', borderColor: 'inactive', paddingX: 1 } as const)
 
     // A desktop draws every Button natively, padding and all, so only the arrow is one:
-    // the title stays text, in line with the card's rows. `plain` is the terminal's
-    // alone; a desktop's secondary button, dim, keeps the arrow quieter than the title.
-    const arrow = isTerminal ? ({ plain: true } as const) : ({ variant: 'secondary', dimColor: true } as const)
+    // the title stays text, in line with the card's rows. VS Code draws a plain one in
+    // its accent color, louder than the title; a dim secondary one stays below it.
+    const arrow = isFramed ? ({ variant: 'secondary', dimColor: true } as const) : ({ plain: true } as const)
     const title = (name: string, key: string, isOpen: boolean, onPress: () => unknown) => (
       <Box flexDirection="row" gap={1}>
         <Text bold>{name}</Text>
@@ -204,17 +210,27 @@ export const register: Register = on => {
           {title('Usage', 'usage', usageOpen, () => update($, isUsageOpen, open => !open))}
           {usageOpen && limitsNow.length === 0 && <Text dimColor>No data yet</Text>}
           {usageOpen &&
-            limitsNow.map(limit =>
-              meter(
-                limit.label,
-                limit.percent,
-                [
-                  `${limit.label.padEnd(labelWidth)} `,
-                  <Text color={level(limit.percent)}>{`${Math.round(limit.percent)}%`.padStart(4)}</Text>,
-                ],
-                limit.resetsIn && `resets ${limit.resetsIn}`,
-              ),
-            )}
+            limitsNow.map(limit => {
+              const used = `${Math.round(limit.percent)}%`
+              // Padding lines the columns up in the terminal's monospace alone; elsewhere
+              // the meter sits at the right edge, as on the context card's title row.
+              if (isTerminal)
+                return meter(
+                  limit.label,
+                  limit.percent,
+                  [`${limit.label.padEnd(labelWidth)} `, <Text color={level(limit.percent)}>{used.padStart(4)}</Text>],
+                  limit.resetsIn && `resets ${limit.resetsIn}`,
+                )
+              return (
+                <Box flexDirection="row" justifyContent="space-between">
+                  <Text>
+                    {limit.label}
+                    {limit.resetsIn && <Text dimColor> · resets {limit.resetsIn}</Text>}
+                  </Text>
+                  {meter(limit.label, limit.percent, <Text color={level(limit.percent)}>{used}</Text>)}
+                </Box>
+              )
+            })}
         </Box>
         <Box key="cost-card" flexDirection="column" {...card}>
           <Box flexDirection="row" justifyContent="space-between">

@@ -241,14 +241,23 @@ test('the usage card shows each window with its reset', async ($, on) => {
       { kind: 'seven_day', percentUsed: 96, resetsAt: '2026-10-26T15:30:00Z' },
     ],
   })
-  for (const surface of SURFACES) {
+  // The terminal's monospace lines the columns up with spaces.
+  const terminal = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await text(terminal, /^5h/)).toContain('23%')
+  expect(await text(terminal, /^7d/)).toContain('96%')
+  expect(await text(terminal, /^5h/)).toContain('━────')
+  expect(await text(terminal, /resets 2h14m/)).toBeDefined()
+  expect(await text(terminal, /resets 3d5h/)).toBeDefined()
+  await terminal.unmount()
+  // Elsewhere spaces are narrower than digits: the window and its reset on the left,
+  // the percent and meter on the right, as the context card's title row.
+  for (const surface of ['desktop', 'vscode'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
-    expect(await text(ui, /^5h/)).toContain('23%')
-    expect(await text(ui, /^7d/)).toContain('96%')
-    expect(await text(ui, /resets 2h14m/)).toBeDefined()
-    expect(await text(ui, /resets 3d5h/)).toBeDefined()
-    if (surface === 'terminal') expect(await text(ui, /^5h/)).toContain('━────')
-    else expect(await svgAlt(ui, /5h/)).toBe('5h 23% used')
+    expect(await text(ui, /^5h/)).toBe('5h · resets 2h14m')
+    expect(await text(ui, /^7d/)).toBe('7d · resets 3d5h')
+    expect(await text(ui, /^23%$/)).toBe('23%')
+    expect(await text(ui, /^96%$/)).toBe('96%')
+    expect(await svgAlt(ui, /5h/)).toBe('5h 23% used')
     await ui.unmount()
   }
 })
@@ -265,10 +274,10 @@ test('the usage card before any reading, and closed', async ($, on) => {
 
 test('cards are spaced apart where the surface draws its own borders, not on the terminal', async ($, on) => {
   await start($, on, { isRepo: false })
-  // A desktop sizes the step itself; VS Code draws it as cells, one row down.
   const desktop = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect((await desktop.find({ key: 'cards' }))?.props.gap).toBe('lg')
+  expect((await desktop.find({ key: 'cards' }))?.props.gap).toBe(1)
   await desktop.unmount()
+  // VS Code draws the step as cells, one row down.
   const vscode = await $.ui.mount({ ...PANE, surface: 'vscode' })
   expect((await vscode.find({ key: 'cards' }))?.props.rowGap).toBe(1)
   await vscode.unmount()
@@ -288,33 +297,36 @@ test('titles are text beside a one-glyph toggle, so they line up with the rows',
   }
 })
 
-test('cards are boxed dim on the terminal and unboxed elsewhere, inside the pane frame', async ($, on) => {
+test('cards are boxed dim on the terminal, inactive on the desktop, and unboxed in VS Code', async ($, on) => {
   await start($, on, { isRepo: false })
   const terminal = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  const boxed = (await terminal.find({ key: 'env-card' }))?.props
-  expect(boxed?.borderStyle).toBe('round')
-  expect(boxed?.borderDimColor).toBe(true)
+  const dim = (await terminal.find({ key: 'env-card' }))?.props
+  expect(dim?.borderStyle).toBe('round')
+  expect(dim?.borderDimColor).toBe(true)
   await terminal.unmount()
-  for (const surface of ['desktop', 'vscode'] as const) {
-    const ui = await $.ui.mount({ ...PANE, surface })
-    expect((await ui.find({ key: 'env-card' }))?.props.borderStyle).toBeUndefined()
-    await ui.unmount()
-  }
+  const desktop = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const inactive = (await desktop.find({ key: 'env-card' }))?.props
+  expect(inactive?.borderStyle).toBe('round')
+  expect(inactive?.borderColor).toBe('inactive')
+  await desktop.unmount()
+  const vscode = await $.ui.mount({ ...PANE, surface: 'vscode' })
+  expect((await vscode.find({ key: 'env-card' }))?.props.borderStyle).toBeUndefined()
+  await vscode.unmount()
 })
 
-test('the toggle is a plain glyph on the terminal and a dim secondary button elsewhere', async ($, on) => {
+test('the toggle is plain, save in VS Code, where it is a dim secondary button', async ($, on) => {
   await start($, on, { isRepo: false })
-  const terminal = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect((await terminal.find({ key: 'env' }))?.props.plain).toBe(true)
-  await terminal.unmount()
-  for (const surface of ['desktop', 'vscode'] as const) {
+  for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
-    const toggle = (await ui.find({ key: 'env' }))?.props
-    expect(toggle?.plain).toBeUndefined()
-    expect(toggle?.variant).toBe('secondary')
-    expect(toggle?.dimColor).toBe(true)
+    expect((await ui.find({ key: 'env' }))?.props.plain).toBe(true)
     await ui.unmount()
   }
+  const vscode = await $.ui.mount({ ...PANE, surface: 'vscode' })
+  const toggle = (await vscode.find({ key: 'env' }))?.props
+  expect(toggle?.plain).toBeUndefined()
+  expect(toggle?.variant).toBe('secondary')
+  expect(toggle?.dimColor).toBe(true)
+  await vscode.unmount()
 })
 
 test('the cost card splits the total by model, most expensive first', async ($, on) => {
@@ -327,8 +339,8 @@ test('the cost card splits the total by model, most expensive first', async ($, 
     const ui = await $.ui.mount({ ...PANE, surface })
     const all = await texts(ui)
     expect(all).toContain('$0.4724')
-    expect(all.indexOf('opus-5-5')).toBeGreaterThan(-1)
-    expect(all.indexOf('opus-5-5')).toBeLessThan(all.indexOf('haiku-5-5'))
+    expect(all.indexOf('Opus 5.5')).toBeGreaterThan(-1)
+    expect(all.indexOf('Opus 5.5')).toBeLessThan(all.indexOf('Haiku 5.5'))
     expect(all).toContain('$0.0001')
     expect(all).not.toContain('Other')
     await ui.unmount()
@@ -359,8 +371,8 @@ test('a session count that starts over empties the model rows', async ($, on) =>
   await step($, opts, usage('claude-haiku-5-5', 1200, 20))
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   const all = await texts(ui)
-  expect(all).not.toContain('opus-5-5')
-  expect(all).toContain('haiku-5-5')
+  expect(all).not.toContain('Opus 5.5')
+  expect(all).toContain('Haiku 5.5')
   await ui.unmount()
 })
 
