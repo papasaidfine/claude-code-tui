@@ -96,7 +96,7 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const ui = $.ui.resolve(e)
-    const { Box, Text, Button } = ui
+    const { Box, Text, Button, Markdown } = ui
     const [envNow, contextNow, limitsNow, costNow, envOpen, contextOpen, usageOpen, costOpen] = await Promise.all([
       read($, env),
       read($, context),
@@ -116,27 +116,34 @@ export const register: Register = on => {
     const spend = costRows(costNow)
 
     // The terminal's box-drawing borders already leave half a cell between cards and
-    // draw dim well; the desktop, which draws borders itself, needs both spelled out.
-    // VS Code frames the pane itself, and cards boxed inside that frame read as boxes
-    // in boxes: there they go unboxed, set apart by space alone.
-    const isFramed = e.surface === 'vscode'
-    const spacing = isTerminal ? {} : isFramed ? ({ gap: 'lg' } as const) : { gap: 1 }
-    const card = isTerminal
-      ? ({ borderStyle: 'round', borderDimColor: true, paddingX: 1 } as const)
-      : isFramed
-        ? {}
-        : ({ borderStyle: 'round', borderColor: 'inactive', paddingX: 1 } as const)
+    // draw dim well; a surface that draws borders itself needs both spelled out.
+    const spacing = isTerminal ? {} : { gap: 1 }
+    const border = isTerminal ? { borderDimColor: true } : { borderColor: 'inactive' }
 
     // A desktop draws every Button natively, padding and all, so only the arrow is one:
-    // the title stays text, in line with the card's rows. VS Code draws a plain one in
-    // its accent color, louder than the title; a dim secondary one stays below it.
-    const arrow = isFramed ? ({ variant: 'secondary', dimColor: true } as const) : ({ plain: true } as const)
+    // the title stays text, in line with the card's rows. VS Code fills or borders
+    // every Button, `plain` or not, but draws a link the plugin answers bare, so there
+    // the arrow is one, under a reserved name no press can open; the Markdown block
+    // fills its width, held here to the arrow's.
+    const arrow = (key: string, isOpen: boolean, onPress: () => unknown) => {
+      const glyph = isOpen ? '▾' : '▸'
+      if (e.surface !== 'vscode')
+        return (
+          <Button key={key} plain onPress={onPress}>
+            {glyph}
+          </Button>
+        )
+      const href = `https://session-rail.invalid/${key}`
+      return (
+        <Box width={2}>
+          <Markdown key={key} text={`[${glyph}](${href})`} pressableLinks={[href]} onLinkPress={onPress} />
+        </Box>
+      )
+    }
     const title = (name: string, key: string, isOpen: boolean, onPress: () => unknown) => (
       <Box flexDirection="row" gap={1}>
         <Text bold>{name}</Text>
-        <Button key={key} {...arrow} onPress={onPress}>
-          {isOpen ? '▾' : '▸'}
-        </Button>
+        {arrow(key, isOpen, onPress)}
       </Box>
     )
 
@@ -179,7 +186,7 @@ export const register: Register = on => {
 
     return (
       <Box key="cards" flexDirection="column" {...spacing}>
-        <Box key="env-card" flexDirection="column" {...card}>
+        <Box key="env-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
           {title('Environment', 'env', envOpen, () => update($, isEnvOpen, open => !open))}
           {envOpen && (
             <Box flexDirection="column">
@@ -190,7 +197,7 @@ export const register: Register = on => {
             </Box>
           )}
         </Box>
-        <Box key="context-card" flexDirection="column" {...card}>
+        <Box key="context-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
           <Box flexDirection="row" justifyContent="space-between">
             {title('Context', 'context', contextOpen, async () => {
               await update($, isContextOpen, open => !open)
@@ -206,7 +213,7 @@ export const register: Register = on => {
               </Box>
             ))}
         </Box>
-        <Box key="usage-card" flexDirection="column" {...card}>
+        <Box key="usage-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
           {title('Usage', 'usage', usageOpen, () => update($, isUsageOpen, open => !open))}
           {usageOpen && limitsNow.length === 0 && <Text dimColor>No data yet</Text>}
           {usageOpen &&
@@ -232,7 +239,7 @@ export const register: Register = on => {
               )
             })}
         </Box>
-        <Box key="cost-card" flexDirection="column" {...card}>
+        <Box key="cost-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
           <Box flexDirection="row" justifyContent="space-between">
             {title('Cost', 'cost', costOpen, () => update($, isCostOpen, open => !open))}
             <Text>{costNow.total === null ? '—' : usd(costNow.total)}</Text>

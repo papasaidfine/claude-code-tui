@@ -272,15 +272,13 @@ test('the usage card before any reading, and closed', async ($, on) => {
   await ui.unmount()
 })
 
-test('cards are spaced apart where the surface draws its own borders, not on the terminal', async ($, on) => {
+test('cards are spaced apart where borders are drawn by the surface, not on the terminal', async ($, on) => {
   await start($, on, { isRepo: false })
-  const desktop = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect((await desktop.find({ key: 'cards' }))?.props.gap).toBe(1)
-  await desktop.unmount()
-  // VS Code draws the step as cells, one row down.
-  const vscode = await $.ui.mount({ ...PANE, surface: 'vscode' })
-  expect((await vscode.find({ key: 'cards' }))?.props.rowGap).toBe(1)
-  await vscode.unmount()
+  for (const surface of ['desktop', 'vscode'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect((await ui.find({ key: 'cards' }))?.props.gap).toBe(1)
+    await ui.unmount()
+  }
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect((await ui.find({ key: 'cards' }))?.props.gap).toBeUndefined()
   await ui.unmount()
@@ -297,35 +295,38 @@ test('titles are text beside a one-glyph toggle, so they line up with the rows',
   }
 })
 
-test('cards are boxed dim on the terminal, inactive on the desktop, and unboxed in VS Code', async ($, on) => {
+test('card borders are dim on the terminal and the inactive color elsewhere', async ($, on) => {
   await start($, on, { isRepo: false })
   const terminal = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  const dim = (await terminal.find({ key: 'env-card' }))?.props
-  expect(dim?.borderStyle).toBe('round')
-  expect(dim?.borderDimColor).toBe(true)
+  expect((await terminal.find({ key: 'env-card' }))?.props.borderDimColor).toBe(true)
   await terminal.unmount()
-  const desktop = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  const inactive = (await desktop.find({ key: 'env-card' }))?.props
-  expect(inactive?.borderStyle).toBe('round')
-  expect(inactive?.borderColor).toBe('inactive')
-  await desktop.unmount()
-  const vscode = await $.ui.mount({ ...PANE, surface: 'vscode' })
-  expect((await vscode.find({ key: 'env-card' }))?.props.borderStyle).toBeUndefined()
-  await vscode.unmount()
-})
-
-test('the toggle is plain, save in VS Code, where it is a dim secondary button', async ($, on) => {
-  await start($, on, { isRepo: false })
-  for (const surface of ['terminal', 'desktop'] as const) {
+  for (const surface of ['desktop', 'vscode'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
-    expect((await ui.find({ key: 'env' }))?.props.plain).toBe(true)
+    expect((await ui.find({ key: 'env-card' }))?.props.borderColor).toBe('inactive')
     await ui.unmount()
   }
+})
+
+test('the toggle is a plain Button, save in VS Code, where it is a bare link', async ($, on) => {
+  await start($, on, { isRepo: true, percent: 24, host: 'box' })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    const toggle = await ui.find({ key: 'env' })
+    expect(toggle?.type).toBe('Button')
+    expect(toggle?.props.plain).toBe(true)
+    await ui.unmount()
+  }
+  // VS Code draws every Button filled or bordered; a link the plugin answers, bare.
   const vscode = await $.ui.mount({ ...PANE, surface: 'vscode' })
-  const toggle = (await vscode.find({ key: 'env' }))?.props
-  expect(toggle?.plain).toBeUndefined()
-  expect(toggle?.variant).toBe('secondary')
-  expect(toggle?.dimColor).toBe(true)
+  const href = 'https://session-rail.invalid/env'
+  const toggle = await vscode.find({ key: 'env' })
+  expect(toggle?.type).toBe('Markdown')
+  expect(toggle?.props.text).toBe(`[▾](${href})`)
+  expect(toggle?.props.pressableLinks).toEqual([href])
+  expect(await text(vscode, /box/)).toBeDefined()
+  await vscode.press({ key: 'env', link: { href } })
+  expect(await text(vscode, /box/)).toBeUndefined()
+  expect((await vscode.find({ key: 'env' }))?.props.text).toBe('[▸](https://session-rail.invalid/env)')
   await vscode.unmount()
 })
 
