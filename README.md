@@ -34,7 +34,7 @@ claude plugin install session-rail --marketplace papasaidfine/claude-code-tui
 
 Type `/rail` to open the pane. It docks beside the chat when the terminal is wide enough, and opens above the prompt otherwise. Close it with its `✕`, or type `/rail` again. `/rail` works while Claude is busy, too: it does not wait for the turn to end.
 
-Click a card's title (or Tab to it and press Enter while the pane has focus) to fold or unfold it.
+Click the arrow beside a card's title (or Tab to it and press Enter while the pane has focus) to fold or unfold it.
 
 ### Environment
 
