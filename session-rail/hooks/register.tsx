@@ -119,6 +119,9 @@ export const register: Register = on => {
     // draw dim well; a surface that draws borders itself needs both spelled out.
     const spacing = isTerminal ? {} : { gap: 1 }
     const border = isTerminal ? { borderDimColor: true } : { borderColor: 'inactive' }
+    // VS Code sets a Box's spacing in lines (`lh`), so it can take half of one: room
+    // above and below a card's rows, which the desktop leaves of its own accord.
+    const room = e.surface === 'vscode' ? { paddingY: 0.5 } : {}
 
     // A desktop draws every Button natively, padding and all, so only the arrow is one:
     // the title stays text, in line with the card's rows. VS Code fills or borders
@@ -186,7 +189,7 @@ export const register: Register = on => {
 
     return (
       <Box key="cards" flexDirection="column" {...spacing}>
-        <Box key="env-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
+        <Box key="env-card" flexDirection="column" borderStyle="round" {...border} {...room} paddingX={1}>
           {title('Environment', 'env', envOpen, () => update($, isEnvOpen, open => !open))}
           {envOpen && (
             <Box flexDirection="column">
@@ -197,7 +200,7 @@ export const register: Register = on => {
             </Box>
           )}
         </Box>
-        <Box key="context-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
+        <Box key="context-card" flexDirection="column" borderStyle="round" {...border} {...room} paddingX={1}>
           <Box flexDirection="row" justifyContent="space-between">
             {title('Context', 'context', contextOpen, async () => {
               await update($, isContextOpen, open => !open)
@@ -213,7 +216,7 @@ export const register: Register = on => {
               </Box>
             ))}
         </Box>
-        <Box key="usage-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
+        <Box key="usage-card" flexDirection="column" borderStyle="round" {...border} {...room} paddingX={1}>
           {title('Usage', 'usage', usageOpen, () => update($, isUsageOpen, open => !open))}
           {usageOpen && limitsNow.length === 0 && <Text dimColor>No data yet</Text>}
           {usageOpen &&
@@ -239,7 +242,7 @@ export const register: Register = on => {
               )
             })}
         </Box>
-        <Box key="cost-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
+        <Box key="cost-card" flexDirection="column" borderStyle="round" {...border} {...room} paddingX={1}>
           <Box flexDirection="row" justifyContent="space-between">
             {title('Cost', 'cost', costOpen, () => update($, isCostOpen, open => !open))}
             <Text>{costNow.total === null ? '—' : usd(costNow.total)}</Text>

@@ -307,6 +307,18 @@ test('card borders are dim on the terminal and the inactive color elsewhere', as
   }
 })
 
+test('cards in VS Code have half a line of room above and below their rows', async ($, on) => {
+  await start($, on, { isRepo: false })
+  const vscode = await $.ui.mount({ ...PANE, surface: 'vscode' })
+  expect((await vscode.find({ key: 'env-card' }))?.props.paddingY).toBe(0.5)
+  await vscode.unmount()
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect((await ui.find({ key: 'env-card' }))?.props.paddingY).toBeUndefined()
+    await ui.unmount()
+  }
+})
+
 test('the toggle is a plain Button, save in VS Code, where it is a bare link', async ($, on) => {
   await start($, on, { isRepo: true, percent: 24, host: 'box' })
   for (const surface of ['terminal', 'desktop'] as const) {
