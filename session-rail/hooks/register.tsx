@@ -115,17 +115,20 @@ export const register: Register = on => {
     const labelWidth = Math.max(0, ...limitsNow.map(limit => limit.label.length))
     const spend = costRows(costNow)
 
-    // The terminal's box-drawing borders already leave half a cell between cards and
-    // draw dim well; a surface that draws borders itself needs both spelled out.
-    const spacing = isTerminal ? {} : { gap: 1 }
-    const border = isTerminal ? { borderDimColor: true } : { borderColor: 'inactive' }
+    // The terminal sets each card in a dim box-drawing border, which already leaves
+    // half a cell between cards. A surface that draws its own borders nests them inside
+    // the pane's frame, so there the cards go unboxed, set apart by space alone.
+    const spacing = isTerminal ? {} : ({ gap: 'lg' } as const)
+    const card = isTerminal ? ({ borderStyle: 'round', borderDimColor: true, paddingX: 1 } as const) : {}
 
     // A desktop draws every Button natively, padding and all, so only the arrow is one:
-    // the title stays text, in line with the card's rows.
+    // the title stays text, in line with the card's rows. `plain` is the terminal's
+    // alone; a desktop's secondary button, dim, keeps the arrow quieter than the title.
+    const arrow = isTerminal ? ({ plain: true } as const) : ({ variant: 'secondary', dimColor: true } as const)
     const title = (name: string, key: string, isOpen: boolean, onPress: () => unknown) => (
       <Box flexDirection="row" gap={1}>
         <Text bold>{name}</Text>
-        <Button key={key} plain onPress={onPress}>
+        <Button key={key} {...arrow} onPress={onPress}>
           {isOpen ? '▾' : '▸'}
         </Button>
       </Box>
@@ -170,7 +173,7 @@ export const register: Register = on => {
 
     return (
       <Box key="cards" flexDirection="column" {...spacing}>
-        <Box key="env-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
+        <Box key="env-card" flexDirection="column" {...card}>
           {title('Environment', 'env', envOpen, () => update($, isEnvOpen, open => !open))}
           {envOpen && (
             <Box flexDirection="column">
@@ -181,7 +184,7 @@ export const register: Register = on => {
             </Box>
           )}
         </Box>
-        <Box key="context-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
+        <Box key="context-card" flexDirection="column" {...card}>
           <Box flexDirection="row" justifyContent="space-between">
             {title('Context', 'context', contextOpen, async () => {
               await update($, isContextOpen, open => !open)
@@ -197,7 +200,7 @@ export const register: Register = on => {
               </Box>
             ))}
         </Box>
-        <Box key="usage-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
+        <Box key="usage-card" flexDirection="column" {...card}>
           {title('Usage', 'usage', usageOpen, () => update($, isUsageOpen, open => !open))}
           {usageOpen && limitsNow.length === 0 && <Text dimColor>No data yet</Text>}
           {usageOpen &&
@@ -213,7 +216,7 @@ export const register: Register = on => {
               ),
             )}
         </Box>
-        <Box key="cost-card" flexDirection="column" borderStyle="round" {...border} paddingX={1}>
+        <Box key="cost-card" flexDirection="column" {...card}>
           <Box flexDirection="row" justifyContent="space-between">
             {title('Cost', 'cost', costOpen, () => update($, isCostOpen, open => !open))}
             <Text>{costNow.total === null ? '—' : usd(costNow.total)}</Text>
