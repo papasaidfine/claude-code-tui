@@ -31,14 +31,18 @@ export type CostInfo = {
 
 // One frame of Clawd, in his pixels from where he rests: `dx` right, `dy` up, each
 // arm (left, right) raised a pixel per step (lowered below 0), and `stride` his legs
-// set wide, as midway through a step.
+// set wide, as midway through a step; `zs` the z's beside him as he dozes.
 export type Pose = {
   dx: number
   dy: number
   eyes: 'open' | 'shut' | 'left' | 'right'
   arms: [number, number]
   stride: boolean
+  zs: number
 }
+
+// What Clawd wears, as the `theme` option names it; `auto` picks by the date.
+export type ThemeName = 'auto' | 'classic' | 'christmas' | 'halloween' | 'lunar-new-year'
 
 declare module 'claude-code' {
   interface PluginState {
@@ -52,6 +56,7 @@ declare module 'claude-code' {
       isUsageOpen: boolean
       isCostOpen: boolean
       pose: Pose
+      theme: Exclude<ThemeName, 'auto'>
     }
   }
 }

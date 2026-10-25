@@ -1,6 +1,6 @@
 {
   "name": "session-rail",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "A Session pane beside the chat: environment, context, usage limits, cost by model and Clawd, like Claude Desktop's session rail",
   "author": { "name": "papasaidfine" },
   "license": "MIT",
@@ -11,6 +11,13 @@
       "title": "Open the Session pane at start",
       "description": "Open the Session pane whenever a session starts. Off: it opens only when you run /rail.",
       "default": false
+    },
+    "theme": {
+      "type": "string",
+      "title": "Clawd's theme",
+      "description": "What Clawd wears. auto: a Santa hat for Christmas, a witch hat for Halloween, a skullcap for Lunar New Year, his own orange the rest of the year.",
+      "options": ["auto", "classic", "christmas", "halloween", "lunar-new-year"],
+      "default": "auto"
     }
   },
   "types": "./types/index.d.ts"

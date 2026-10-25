@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderChildren, TurnUsage } from 'claude-code'
 
-import type { ContextInfo, CostInfo, Env, Limit } from '../types'
-import { animate, CLAWD_COLOR, cells, clawdSvg, REST, SVG_SIZE } from './clawd'
+import type { ContextInfo, CostInfo, Env, Limit, ThemeName } from '../types'
+import { animate, cells, clawdSvg, REST, svgSize, THEMES, themeOn } from './clawd'
 import { readEnv, readUsage } from './collect'
 import { bar, level, tokens, usd } from './format'
 import { addSpend, costRows, price, settle } from './pricing'
@@ -27,6 +27,7 @@ const isContextOpen = atom({ plugin: 'session-rail', key: 'isContextOpen' } as c
 const isUsageOpen = atom({ plugin: 'session-rail', key: 'isUsageOpen' } as const, true)
 const isCostOpen = atom({ plugin: 'session-rail', key: 'isCostOpen' } as const, true)
 const pose = atom({ plugin: 'session-rail', key: 'pose' } as const, REST)
+const theme = atom({ plugin: 'session-rail', key: 'theme' } as const, 'classic' as Exclude<ThemeName, 'auto'>)
 
 // Started with the session, its timers with it; a reload starts a new one.
 let clawd: ReturnType<typeof animate> | undefined
@@ -44,6 +45,12 @@ async function refresh($: EngineInterface): Promise<void> {
   }
 }
 
+// `auto` follows the calendar, looked at again with every turn.
+async function dress($: EngineInterface, chosen: ThemeName): Promise<void> {
+  const name = chosen === 'auto' ? themeOn(await $.clock.now()) : chosen
+  if ((await read($, theme)) !== name) await update($, theme, () => name)
+}
+
 // Prices one response by its model; reads the engine's total beside it.
 async function record($: EngineInterface, usage: TurnUsage): Promise<void> {
   const priced = price(usage)
@@ -55,6 +62,8 @@ async function record($: EngineInterface, usage: TurnUsage): Promise<void> {
 }
 
 export const register: Register = (on, options) => {
+  const chosen = typeof options.theme === 'string' && options.theme in THEMES ? (options.theme as ThemeName) : 'auto'
+
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     await $.command.register({
@@ -64,6 +73,7 @@ export const register: Register = (on, options) => {
       immediate: true,
     })
     await refresh($)
+    await dress($, chosen)
     clawd = animate($, frame => void update($, pose, () => frame))
     clawd.start()
     if (options.openOnStart === true) await $.ui.open(OPEN)
@@ -84,7 +94,10 @@ export const register: Register = (on, options) => {
 
   // Clawd moves while the main loop works; a subagent's turns leave him be.
   on('turn.start', ($, e, next) => {
-    if (e.agentId === undefined) clawd?.working(true)
+    if (e.agentId === undefined) {
+      clawd?.working(true)
+      void dress($, chosen)
+    }
 
     return next(e)
   })
@@ -117,7 +130,7 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const ui = $.ui.resolve(e)
     const { Box, Text, Button, Markdown } = ui
-    const [envNow, contextNow, limitsNow, costNow, envOpen, contextOpen, usageOpen, costOpen, poseNow] = await Promise.all([
+    const [envNow, contextNow, limitsNow, costNow, envOpen, contextOpen, usageOpen, costOpen, poseNow, themeNow] = await Promise.all([
       read($, env),
       read($, context),
       read($, limits),
@@ -127,7 +140,9 @@ export const register: Register = (on, options) => {
       read($, isUsageOpen),
       read($, isCostOpen),
       read($, pose),
+      read($, theme),
     ])
+    const dressed = THEMES[themeNow]
     const percent = contextNow.percent === null ? '—' : `${Math.round(contextNow.percent)}%`
     // Every surface but the terminal has Svg: drawn icons and meters there, since its
     // font may lack the Nerd Font glyphs and thins out box-drawing bars.
@@ -279,9 +294,21 @@ export const register: Register = (on, options) => {
         </Box>
         <Box key="clawd" flexDirection="column" alignItems="center">
           {Svg ? (
-            <Svg source={clawdSvg(poseNow)} alt="Clawd" {...SVG_SIZE} />
+            <Svg source={clawdSvg(poseNow, dressed)} alt="Clawd" {...svgSize(dressed)} />
           ) : (
-            cells(poseNow).map(row => <Text color={CLAWD_COLOR}>{row}</Text>)
+            cells(poseNow, dressed).map(row => (
+              <Text>
+                {row.map(run =>
+                  run.color || run.dim ? (
+                    <Text color={run.color} backgroundColor={run.background} dimColor={run.dim}>
+                      {run.text}
+                    </Text>
+                  ) : (
+                    run.text
+                  ),
+                )}
+              </Text>
+            ))
           )}
         </Box>
       </Box>

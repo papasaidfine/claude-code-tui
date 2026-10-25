@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
-import { cells, REST, TICK } from '../hooks/clawd'
+import { cells, DOZE, REST, text as rowsOf, THEMES, TICK } from '../hooks/clawd'
 
 const PANE = {
   plugin: 'session-rail',
@@ -455,46 +455,63 @@ test('a step whose cost cannot be read is not requested again', async ($, on) =>
   expect(opts.requests).toBe(1)
 })
 
-// Clawd's rows in the drawing: the four Texts in his color, top to bottom.
-const clawdRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text?: string; props: Record<string, unknown> }[]> }) =>
-  (await ui.findAll({ type: 'Text' })).filter(t => t.props.color === '#D77757').map(t => t.text ?? '')
+// Clawd's rows in the drawing, top to bottom: the Texts of 13 cells of blocks and z's.
+const clawdRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text?: string }[]> }) =>
+  (await ui.findAll({ type: 'Text' })).map(t => t.text ?? '').filter(row => /^[ ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█zZ]{13}$/u.test(row))
 
 const turn = { turnId: 't1', answer: '', durationMs: 0, isAborted: false, reason: 'answer' } as const
+const classic = { options: { theme: 'classic' } }
+const key = (rows: string[]) => rows.join('\n')
+const BLINK_FRAME = { ...REST, eyes: 'shut' as const }
 
-test('Clawd rests below the cards and blinks every few seconds', async ($, on) => {
+test('Clawd rests below the cards, and every few seconds blinks or dozes off', classic, async ($, on) => {
   const clock = mock.clock(on, { now: NOW })
   await start($, on, { isRepo: false, hasClock: true })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(await clawdRows(ui)).toEqual(cells(REST))
+  expect(await clawdRows(ui)).toEqual(rowsOf(cells(REST)))
 
-  const shut = cells({ ...REST, eyes: 'shut' })
-  let blinks = 0
+  const idle = new Set([BLINK_FRAME, ...DOZE].map(frame => key(rowsOf(cells(frame)))))
+  let stirs = 0
   for (let t = 0; t <= 7200; t += TICK) {
     await clock.advance(TICK)
-    if (JSON.stringify(await clawdRows(ui)) === JSON.stringify(shut)) blinks++
+    if (idle.has(key(await clawdRows(ui)))) stirs++
   }
-  expect(blinks).toBeGreaterThan(0)
+  expect(stirs).toBeGreaterThan(0)
   await ui.unmount()
 })
 
-test('Clawd moves while a main-loop turn runs, and rests when it ends', async ($, on) => {
+test('Clawd moves while a main-loop turn runs, and rests when it ends', classic, async ($, on) => {
   const clock = mock.clock(on, { now: NOW })
   await start($, on, { isRepo: false, hasClock: true })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
 
   await $.turn.start({ text: '', turnId: 'a1', agentId: 'sub' })
-  expect(await clawdRows(ui)).toEqual(cells(REST))
+  expect(await clawdRows(ui)).toEqual(rowsOf(cells(REST)))
 
   await $.turn.start({ text: 'hi', turnId: 't1' })
-  const seen = new Set([JSON.stringify(await clawdRows(ui))])
+  const seen = new Set([key(await clawdRows(ui))])
   for (let t = 0; t < 3000; t += TICK) {
     await clock.advance(TICK)
-    seen.add(JSON.stringify(await clawdRows(ui)))
+    seen.add(key(await clawdRows(ui)))
   }
   expect(seen.size).toBeGreaterThan(3)
 
   await $.turn.complete(turn)
-  expect(await clawdRows(ui)).toEqual(cells(REST))
+  expect(await clawdRows(ui)).toEqual(rowsOf(cells(REST)))
+  await ui.unmount()
+})
+
+test('the theme option dresses Clawd', { options: { theme: 'christmas' } }, async ($, on) => {
+  await start($, on, { isRepo: false })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await clawdRows(ui)).toEqual(rowsOf(cells(REST, THEMES.christmas)))
+  await ui.unmount()
+})
+
+test('auto dresses Clawd by the date: a witch hat in late October', async ($, on) => {
+  await start($, on, { isRepo: false })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await clawdRows(ui)).toEqual(rowsOf(cells(REST, THEMES.halloween)))
   await ui.unmount()
 })
 

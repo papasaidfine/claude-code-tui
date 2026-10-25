@@ -66,7 +66,17 @@ The per-model amounts are estimated from each response's token counts at list pr
 
 ### Clawd
 
-Clawd, the critter from Claude Code's welcome banner, sits below the cards. While Claude works he keeps busy, one animation after another picked at random: he blinks, looks around, hops, walks, waves or types. When the turn ends he settles down and just blinks now and then.
+Clawd, the critter from Claude Code's welcome banner, sits below the cards. While Claude works he keeps busy, one animation after another picked at random: he blinks, looks around, hops, walks, waves or types. When the turn ends he settles down: he blinks now and then, and every so often dozes off, `z`s rising beside his head, until he wakes with a stretch or Claude gets back to work.
+
+He dresses for the season. Pick a look under **Clawd's theme** in `/config`:
+
+| Theme | Clawd |
+|---|---|
+| `auto` (default) | Follows the calendar: `christmas` from Dec 1 to 26, `halloween` from Oct 17 to 31, `lunar-new-year` from a week before Lunar New Year to the Lantern Festival, `classic` the rest of the year |
+| `classic` | His own orange |
+| `christmas` | Light blue, in a red Santa hat with a white brim and pom-pom |
+| `halloween` | Orange, in a purple witch hat with a green band |
+| `lunar-new-year` | Red, in a gold skullcap with a red knob |
 
 ### When it updates
 
