@@ -17,10 +17,10 @@ test('at rest Clawd is the welcome banner, in a canvas with room around him', ()
 })
 
 test('no frame runs him or his hat off the canvas', () => {
-  // A body of 12 by 4, two eye holes open or two slits shut, two arms of two pixels and four legs.
+  // A body of 12 by 4, two eye holes open, none shut, two slits closed; two arms of two pixels and four legs.
   for (const theme of Object.values(THEMES))
     for (const frame of FRAMES) {
-      const eyes = frame.eyes === 'shut' ? 4 : 2
+      const eyes = { shut: 0, closed: 4 }[frame.eyes as string] ?? 2
       expect(filled(pixels(frame, theme))).toBe(48 - eyes + 4 + 4 + hatPixels(theme))
       expect(text(cells(frame, theme)).every(row => row.length === 13)).toBe(true)
     }
@@ -59,7 +59,7 @@ test('the Christmas Clawd is light blue under a red hat with a white brim and po
   expect(runs.some(run => run.color === '#E03C3C' && run.background === '#F4F4F4')).toBe(true)
 })
 
-test('dozing, his eyes shut and z s rise beside his head', () => {
+test('dozing, his eyes closed and z s rise beside his head', () => {
   const dozing = DOZE.filter(frame => frame.zs === 2)
   expect(dozing.length).toBeGreaterThan(0)
   for (const theme of Object.values(THEMES)) {
@@ -67,7 +67,7 @@ test('dozing, his eyes shut and z s rise beside his head', () => {
     expect(rows.join('')).toContain('z')
     expect(rows.join('')).toContain('Z')
   }
-  expect(DOZE.slice(0, -3).every(frame => frame.eyes === 'shut')).toBe(true)
+  expect(DOZE.slice(0, -3).every(frame => frame.eyes === 'closed')).toBe(true)
 })
 
 test('seasonal dresses him by the date', () => {
@@ -90,6 +90,7 @@ test('the svg draws each pixel in its own color, a hat making it taller', () => 
   expect(clawdSvg({ ...REST, zs: 2 })).toContain('>Z</text>')
 })
 
-test('shut, his eyes are lids, not gone', () => {
-  expect(text(cells(BLINK[0]!))[1]).toBe('   ▐▀███▀▌   ')
+test('a blink takes his eyes away; asleep they are lids', () => {
+  expect(text(cells(BLINK[0]!))[1]).toBe('   ▐█████▌   ')
+  expect(text(cells(DOZE[0]!))[1]).toBe('   ▐▀███▀▌   ')
 })

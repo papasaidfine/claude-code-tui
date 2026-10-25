@@ -85,7 +85,15 @@ function canvas(theme: Theme): { height: number; restY: number } {
 
 export const REST: Pose = { dx: 0, dy: 0, eyes: 'open', arms: [0, 0], stride: false, zs: 0 }
 
-const EYES: Record<Pose['eyes'], number[]> = { open: [5, 12], left: [4, 11], right: [6, 13], shut: [4, 5, 12, 13] }
+// The holes of his eyes on row 1: shut for a blink they are gone, closed in sleep
+// they are lids, a slit two pixels wide.
+const EYES: Record<Pose['eyes'], number[]> = {
+  open: [5, 12],
+  left: [4, 11],
+  right: [6, 13],
+  shut: [],
+  closed: [4, 5, 12, 13],
+}
 
 // Row by row, the color of each pixel, undefined where none. His body spans x 3-14
 // and y 0-3, the arms stick out on row 2 and the four legs stand on row 4, as in
@@ -226,9 +234,9 @@ export const ANIMATIONS: Record<string, Pose[]> = {
 
 export const BLINK = [pose({ eyes: 'shut' })]
 
-// Eyes shut, arms down, z's rising five times over (some nine seconds); then a
+// Eyes closed, arms down, z's rising five times over (some nine seconds); then a
 // stretch as he wakes.
-const asleep = pose({ eyes: 'shut', arms: [-1, -1] })
+const asleep = pose({ eyes: 'closed', arms: [-1, -1] })
 export const DOZE = [
   ...Array.from({ length: 5 }, () => [0, 1, 2].flatMap(zs => hold({ ...asleep, zs }, 4))).flat(),
   ...hold(pose({ arms: [2, 2] }), 3),
