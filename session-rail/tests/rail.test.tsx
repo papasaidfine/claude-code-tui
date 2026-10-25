@@ -457,7 +457,7 @@ test('a step whose cost cannot be read is not requested again', async ($, on) =>
 
 // Clawd's rows in the drawing, top to bottom: the Texts of his canvas's cells.
 const clawdRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text?: string }[]> }) =>
-  (await ui.findAll({ type: 'Text' })).map(t => t.text ?? '').filter(row => /^[ ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█zZ·*✦]{13,22}$/u.test(row))
+  (await ui.findAll({ type: 'Text' })).map(t => t.text ?? '').filter(row => /^[ ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█zZ·*✦]{13,20}$/u.test(row))
 
 const turn = { turnId: 't1', answer: '', durationMs: 0, isAborted: false, reason: 'answer' } as const
 const classic = { options: { theme: 'classic' } }

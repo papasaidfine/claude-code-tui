@@ -75,7 +75,7 @@ He can dress up for the holidays, each with a scene of its own: pick one under *
 | `classic` (default) | His own orange |
 | `seasonal` | Follows the calendar: `christmas` from Dec 1 to 26, `halloween` from Oct 17 to 31, `lunar-new-year` from a week before Lunar New Year to the Lantern Festival, `classic` the rest of the year |
 | `christmas` | Light blue, in a Santa hat, beside a Christmas tree, snow falling |
-| `halloween` | White, a bat fluttering back and forth overhead, a jack-o'-lantern blinking beside him |
+| `halloween` | White, beside a bare tree, a bat fluttering back and forth overhead |
 | `lunar-new-year` | Red, with a gold belt, between two red lanterns, fireworks bursting overhead |
 
 ### When it updates
