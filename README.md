@@ -68,15 +68,15 @@ The per-model amounts are estimated from each response's token counts at list pr
 
 Clawd, the critter from Claude Code's welcome banner, sits below the cards. While Claude works he keeps busy, one animation after another picked at random: he blinks, looks around, hops, walks, waves or types. When the turn ends he settles down: he blinks now and then, and every so often dozes off, `z`s rising beside his head, until he wakes with a stretch or Claude gets back to work.
 
-He can dress up for the holidays, each with a scene of its own: pick one under **Clawd's theme** in `/config`. He wears his own orange unless you do. The scene moves while Claude works and holds still otherwise.
+He can dress up for the holidays, each with a scene of its own: pick one under **Clawd's theme** in `/config`. He wears his own orange unless you do. The scene keeps moving, whether Claude is working or not.
 
 | Theme | Clawd and his scene |
 |---|---|
 | `classic` (default) | His own orange |
 | `seasonal` | Follows the calendar: `christmas` from Dec 1 to 26, `halloween` from Oct 17 to 31, `lunar-new-year` from a week before Lunar New Year to the Lantern Festival, `classic` the rest of the year |
-| `christmas` | Light blue, in a Santa hat and a red scarf, beside a Christmas tree, snow falling |
-| `halloween` | A jack-o'-lantern with a green stem, a bat flapping and a little ghost bobbing beside him |
-| `lunar-new-year` | Red, in a gold skullcap and belt, between two red lanterns, fireworks bursting overhead |
+| `christmas` | Light blue, in a Santa hat, beside a Christmas tree, snow falling |
+| `halloween` | White, a bat flapping and a little ghost bobbing beside him |
+| `lunar-new-year` | Red, with a gold belt, between two red lanterns, fireworks bursting overhead |
 
 ### When it updates
 

@@ -71,14 +71,14 @@ test('dozing, z s rise beside his head in every scene', () => {
   }
 })
 
-test('Christmas: a tree beside him, a Santa hat and scarf, and snow falling a row a beat', () => {
+test('Christmas: a tree beside him, a Santa hat, and snow falling a row a beat', () => {
   const at = (beat: number) => text(cells(REST, THEMES.christmas, beat))
   expect(at(0)).toEqual([
     '     ·              ',
     '  ▀        ▄██▄█ *  ',
     ' ▗█▖     ▄▀▀▀▀▀▄    ',
     ' ▟▛▙  *  ▐▛███▜▌   ·',
-    '▗▜█▛▖   ▝▜▀▀▀▀█▛▘   ',
+    '▗▜█▛▖   ▝▜█████▛▘   ',
     '  █       ▘▘ ▝▝     ',
   ])
   expect(at(1)[1]![5]).toBe('·')
@@ -88,16 +88,15 @@ test('Christmas: a tree beside him, a Santa hat and scarf, and snow falling a ro
   expect(runs.some(run => run.color === '#3FA34D')).toBe(true)
 })
 
-test('Halloween: a jack-o-lantern Clawd with a stem, a bat that flaps and a ghost that bobs', () => {
+test('Halloween: a white Clawd, a bat that flaps and a ghost that bobs', () => {
   const at = (beat: number) => text(cells(REST, THEMES.halloween, beat))
-  expect(at(0)[3]).toContain('▐▘███▝▌')
+  expect(at(0)[3]).toContain('▐▛███▜▌')
+  expect(cells(REST, THEMES.halloween).flat().some(run => run.color === '#F2F2F2')).toBe(true)
   expect(at(0)[1]).not.toEqual(at(1)[1])
   expect(at(0).slice(3)).not.toEqual(at(2).slice(3))
-  // His carved eyes stay put as he looks about.
-  expect(text(cells({ ...REST, eyes: 'right' }, THEMES.halloween))[3]).toBe(at(0)[3])
 })
 
-test('Lunar New Year: lanterns either side, a gold cap and belt, fireworks bursting in turn', () => {
+test('Lunar New Year: lanterns either side, a gold belt, fireworks bursting in turn', () => {
   const at = (beat: number) => text(cells(REST, THEMES['lunar-new-year'], beat))
   expect(at(0).join('')).not.toContain('✦')
   expect(at(2).join('')).toContain('✦')

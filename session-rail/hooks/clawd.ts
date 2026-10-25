@@ -13,8 +13,7 @@ type Art = { rows: string[]; colors: Record<string, string>; x: number; y: numbe
 // A glyph of the background in a cell of its own, drawn only where nothing else is.
 type Mark = { text: string; column: number; row: number; color: string }
 
-// A theme: his body's color, his face (the holes of his eyes and mouth), what he
-// wears, and the scene around him. A costume that `trails` swings behind him as
+// A theme: his body's color, what he wears, and the scene around him. A costume that `trails` swings behind him as
 // he turns; the background steps a frame at a time while Claude works.
 export type Theme = {
   body: string
@@ -22,7 +21,6 @@ export type Theme = {
   height: number
   restX: number
   restY: number
-  face?: { eyes: [number, number][]; mouth: [number, number][] }
   costume?: (Art & { trails?: boolean })[]
   props?: Art[]
   background?: { arts?: Art[]; marks?: Mark[] }[]
@@ -37,15 +35,6 @@ const SANTA: Art & { trails: true } = {
   colors: { R: '#E03C3C', W: '#F4F4F4' },
   x: 0,
   y: -4,
-  trails: true,
-}
-
-// Round his neck on the row of his arms, its end hanging on the row below.
-const SCARF: Art & { trails: true } = {
-  rows: ['....RRRRRRRRRR....', '............RR....'],
-  colors: { R: '#E03C3C' },
-  x: 0,
-  y: 2,
   trails: true,
 }
 
@@ -78,8 +67,6 @@ const FLAKES = [
   [1, 4],
 ]
 
-const STEM: Art = { rows: ['........GG........', '........GG........'], colors: { G: '#5FA040' }, x: 0, y: -2 }
-
 const bat = (rows: string[]): Art => ({ rows, colors: { P: '#8A5CC8' }, x: 32, y: 0 })
 const BAT_UP = bat(['P..PP..P', 'PPPPPPPP', '..PPPP..', '........'])
 const BAT_DOWN = bat(['........', '..PPPP..', 'PPPPPPPP', 'P......P'])
@@ -90,13 +77,6 @@ const ghost = (y: number): Art => ({
   x: 32,
   y,
 })
-
-const CAP: Art = {
-  rows: ['..................', '........RR........', '......YYYYYY......', '....YYYYYYYYYY....'],
-  colors: { Y: '#E8B739', R: '#B8231A' },
-  x: 0,
-  y: -4,
-}
 
 const BELT: Art = { rows: ['....YYYYYYYYYY....'], colors: { Y: '#E8B739' }, x: 0, y: 3 }
 
@@ -134,7 +114,7 @@ export const THEMES: Record<Exclude<ThemeName, 'seasonal'>, Theme> = {
     height: 12,
     restX: 16,
     restY: 6,
-    costume: [SANTA, SCARF],
+    costume: [SANTA],
     props: [TREE],
     background: Array.from({ length: 6 }, (_, frame) => ({
       marks: FLAKES.map(([column, row], i) => ({
@@ -146,32 +126,11 @@ export const THEMES: Record<Exclude<ThemeName, 'seasonal'>, Theme> = {
     })),
   },
   halloween: {
-    body: '#E8833A',
+    body: '#F2F2F2',
     width: 40,
     height: 12,
     restX: 8,
     restY: 6,
-    // Carved: triangles for eyes, a jagged grin across his belly.
-    face: {
-      eyes: [
-        [5, 0],
-        [4, 1],
-        [5, 1],
-        [12, 0],
-        [12, 1],
-        [13, 1],
-      ],
-      mouth: [
-        [6, 2],
-        [11, 2],
-        [6, 3],
-        [7, 3],
-        [8, 3],
-        [10, 3],
-        [11, 3],
-      ],
-    },
-    costume: [STEM],
     background: [
       { arts: [BAT_UP, ghost(6)] },
       { arts: [BAT_DOWN, ghost(6)] },
@@ -185,7 +144,7 @@ export const THEMES: Record<Exclude<ThemeName, 'seasonal'>, Theme> = {
     height: 12,
     restX: 12,
     restY: 6,
-    costume: [CAP, BELT],
+    costume: [BELT],
     props: [lantern(2), lantern(32)],
     background: [
       {},
@@ -224,20 +183,11 @@ export const BEAT = 600
 
 export const REST: Pose = { dx: 0, dy: 0, eyes: 'open', arms: [0, 0], stride: false, zs: 0 }
 
-const FACE = {
-  eyes: [
-    [5, 1],
-    [12, 1],
-  ] as [number, number][],
-  mouth: [] as [number, number][],
-}
-
-// The holes of his eyes as he looks: a pixel aside, or none shut, for a blink or a
-// doze. Carved eyes (a theme's own face) stay put, which a shift would break up.
-const eyeHoles = (pose: Pose, eyes: [number, number][], isCarved: boolean): [number, number][] => {
+// The holes of his eyes as he looks: a pixel aside, or none shut, for a blink or a doze.
+const eyeHoles = (pose: Pose): number[] => {
   if (pose.eyes === 'shut') return []
-  const shift = isCarved ? 0 : pose.eyes === 'left' ? -1 : pose.eyes === 'right' ? 1 : 0
-  return eyes.map(([x, y]) => [x + shift, y])
+  const shift = pose.eyes === 'left' ? -1 : pose.eyes === 'right' ? 1 : 0
+  return [5 + shift, 12 + shift]
 }
 
 const backgroundAt = (theme: Theme, beat: number) =>
@@ -264,9 +214,8 @@ export function pixels(pose: Pose, theme: Theme = THEMES.classic, beat = 0): (st
   const x0 = theme.restX + pose.dx
   const y0 = theme.restY - pose.dy
   const set = (x: number, y: number, color: string | undefined) => put(x0 + x, y0 + y, color)
-  const face = theme.face ?? FACE
   for (let y = 0; y < 4; y++) for (let x = 3; x <= 14; x++) set(x, y, theme.body)
-  for (const [x, y] of [...eyeHoles(pose, face.eyes, theme.face !== undefined), ...face.mouth]) set(x, y, undefined)
+  for (const x of eyeHoles(pose)) set(x, 1, undefined)
   const [left, right] = pose.arms
   for (const x of [1, 2]) set(x, 2 - left, theme.body)
   for (const x of [15, 16]) set(x, 2 - right, theme.body)
@@ -412,11 +361,9 @@ const between = (random: () => number, low: number, high: number) => low + Math.
 
 // Plays Clawd: at rest, blinking or now and then dozing off every few seconds, and
 // while `working(true)` one animation after another, a short rest between, never
-// the same one twice running, the scene's background stepping on each BEAT.
+// the same one twice running. The scene's background steps on each BEAT throughout.
 export function animate($: EngineInterface, show: { pose: (frame: Pose) => void; beat: (n: number) => void }, random = Math.random) {
   let timer: Timer | undefined
-  let background: Timer | undefined
-  let beat = 0
   let isWorking = false
   let last: string | undefined
 
@@ -449,15 +396,16 @@ export function animate($: EngineInterface, show: { pose: (frame: Pose) => void;
   }
 
   return {
-    start: rest,
+    start() {
+      let beat = 0
+      $.clock.every(BEAT, () => show.beat(++beat))
+      rest()
+    },
     working(now: boolean) {
       if (now === isWorking) return
       isWorking = now
-      background?.cancel()
-      if (now) {
-        background = $.clock.every(BEAT, () => show.beat(++beat))
-        work()
-      } else rest()
+      if (now) work()
+      else rest()
     },
   }
 }

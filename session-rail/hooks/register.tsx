@@ -46,6 +46,10 @@ async function refresh($: EngineInterface): Promise<void> {
   }
 }
 
+async function stepScene($: EngineInterface, n: number): Promise<void> {
+  if (THEMES[await read($, theme)].background) await update($, beat, () => n)
+}
+
 // `seasonal` follows the calendar, looked at again with every turn.
 async function dress($: EngineInterface, chosen: ThemeName): Promise<void> {
   const name = chosen === 'seasonal' ? themeOn(await $.clock.now()) : chosen
@@ -80,7 +84,8 @@ export const register: Register = (on, options) => {
     await dress($, chosen)
     clawd = animate($, {
       pose: frame => void update($, pose, () => frame),
-      beat: n => void update($, beat, () => n),
+      // A theme with no background has nothing to step, so no redraw.
+      beat: n => void stepScene($, n),
     })
     clawd.start()
     if (options.openOnStart === true) await $.ui.open(OPEN)

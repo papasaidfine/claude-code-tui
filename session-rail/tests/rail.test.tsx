@@ -508,7 +508,7 @@ test('the theme option dresses Clawd', { options: { theme: 'christmas' } }, asyn
   await ui.unmount()
 })
 
-test('seasonal dresses Clawd by the date: a jack-o-lantern in late October', { options: { theme: 'seasonal' } }, async ($, on) => {
+test('seasonal dresses Clawd by the date: a Halloween scene in late October', { options: { theme: 'seasonal' } }, async ($, on) => {
   await start($, on, { isRepo: false })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await clawdRows(ui)).toEqual(rowsOf(cells(REST, THEMES.halloween)))
@@ -529,22 +529,19 @@ test('with no theme chosen, Clawd wears his own orange, whatever the date', asyn
   await ui.unmount()
 })
 
-test('the scene behind Clawd moves while Claude works and holds still at rest', { options: { theme: 'christmas' } }, async ($, on) => {
+test('the scene behind Clawd moves whether Claude works or not', { options: { theme: 'christmas' } }, async ($, on) => {
   const clock = mock.clock(on, { now: NOW })
   await start($, on, { isRepo: false, hasClock: true })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   // Snow, apart from him: the top row, over his hat.
   const sky = async () => (await clawdRows(ui)).slice(0, 1).join()
-  const still = await sky()
-  await clock.advance(2 * BEAT)
-  expect(await sky()).toBe(still)
+  const before = await sky()
+  await clock.advance(BEAT)
+  expect(await sky()).not.toBe(before)
 
   await $.turn.start({ text: 'hi', turnId: 't1' })
+  const working = await sky()
   await clock.advance(BEAT)
-  expect(await sky()).not.toBe(still)
-  await $.turn.complete(turn)
-  const stopped = await sky()
-  await clock.advance(2 * BEAT)
-  expect(await sky()).toBe(stopped)
+  expect(await sky()).not.toBe(working)
   await ui.unmount()
 })
