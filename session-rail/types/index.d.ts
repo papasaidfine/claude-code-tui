@@ -56,6 +56,7 @@ declare module 'claude-code' {
       isUsageOpen: boolean
       isCostOpen: boolean
       pose: Pose
+      beat: number
       theme: Exclude<ThemeName, 'seasonal'>
     }
   }

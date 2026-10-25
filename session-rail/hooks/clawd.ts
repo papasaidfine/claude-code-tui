@@ -5,49 +5,196 @@ import type { EngineInterface, Timer } from 'claude-code'
 
 import type { Pose, ThemeName } from '../types'
 
-// What he wears: a hat drawn over the four pixel rows above his head, each row over
-// his 18 pixel columns, a letter for each color in `colors` and `.` for none.
-export type Theme = { body: string; hat?: { rows: string[]; colors: Record<string, string> } }
+// Pixel art: a row of letters each, a color for each letter in `colors`, `.` for
+// none, placed at `x`, `y`. On Clawd (a costume) that is from the top left of his
+// 18 by 5 pixels; in the scene (a prop, a background frame), of the canvas.
+type Art = { rows: string[]; colors: Record<string, string>; x: number; y: number }
 
-// A hat's colors meet only where a cell is full, so a cell is one color, or two
-// with one the background: no cell holds two colors and a gap.
+// A glyph of the background in a cell of its own, drawn only where nothing else is.
+type Mark = { text: string; column: number; row: number; color: string }
+
+// A theme: his body's color, his face (the holes of his eyes and mouth), what he
+// wears, and the scene around him. A costume that `trails` swings behind him as
+// he turns; the background steps a frame at a time while Claude works.
+export type Theme = {
+  body: string
+  width: number
+  height: number
+  restX: number
+  restY: number
+  face?: { eyes: [number, number][]; mouth: [number, number][] }
+  costume?: (Art & { trails?: boolean })[]
+  props?: Art[]
+  background?: { arts?: Art[]; marks?: Mark[] }[]
+}
+
+// Every art keeps its colors from meeting a gap in a cell: a cell is one color, or
+// two that fill it, the one the background of the other. So each sits on even
+// pixels and Clawd moves two at a time.
+
+const SANTA: Art & { trails: true } = {
+  rows: ['........RRRR..WW..', '......RRRRRRRRWW..', '....RRRRRRRRRR....', '..WWWWWWWWWWWWWW..'],
+  colors: { R: '#E03C3C', W: '#F4F4F4' },
+  x: 0,
+  y: -4,
+  trails: true,
+}
+
+// Round his neck on the row of his arms, its end hanging on the row below.
+const SCARF: Art & { trails: true } = {
+  rows: ['....RRRRRRRRRR....', '............RR....'],
+  colors: { R: '#E03C3C' },
+  x: 0,
+  y: 2,
+  trails: true,
+}
+
+const TREE: Art = {
+  rows: [
+    '....YY....',
+    '..........',
+    '....GG....',
+    '...GGGG...',
+    '...GGGG...',
+    '..GGGRGG..',
+    '..GGGGGG..',
+    '.GYGGGGRG.',
+    '....TT....',
+    '....TT....',
+  ],
+  colors: { Y: '#F2C94C', G: '#3FA34D', R: '#E03C3C', T: '#8B5A2B' },
+  x: 0,
+  y: 2,
+}
+
+const SNOW = '#F4F4F4'
+// Flakes falling a row a frame, each from where it starts, round to the top again.
+const FLAKES = [
+  [5, 0],
+  [17, 1],
+  [19, 3],
+  [6, 3],
+  [11, 5],
+  [1, 4],
+]
+
+const STEM: Art = { rows: ['........GG........', '........GG........'], colors: { G: '#5FA040' }, x: 0, y: -2 }
+
+const bat = (rows: string[]): Art => ({ rows, colors: { P: '#8A5CC8' }, x: 32, y: 0 })
+const BAT_UP = bat(['P..PP..P', 'PPPPPPPP', '..PPPP..', '........'])
+const BAT_DOWN = bat(['........', '..PPPP..', 'PPPPPPPP', 'P......P'])
+
+const ghost = (y: number): Art => ({
+  rows: ['..WWWW..', '.WWWWWW.', 'WW.WW.WW', 'WWWWWWWW', 'WWWWWWWW', 'W.WW.WW.'],
+  colors: { W: '#EDEDED' },
+  x: 32,
+  y,
+})
+
+const CAP: Art = {
+  rows: ['..................', '........RR........', '......YYYYYY......', '....YYYYYYYYYY....'],
+  colors: { Y: '#E8B739', R: '#B8231A' },
+  x: 0,
+  y: -4,
+}
+
+const BELT: Art = { rows: ['....YYYYYYYYYY....'], colors: { Y: '#E8B739' }, x: 0, y: 3 }
+
+const lantern = (x: number): Art => ({
+  rows: ['..C...', '..C...', '.RRRR.', 'RRYYRR', 'RRRRRR', '.RRRR.', '..YY..', '..YY..'],
+  colors: { C: '#C9A227', R: '#D93A2F', Y: '#E8B739' },
+  x,
+  y: 0,
+})
+
+// Two bursts over his head in turn: a spark, a star with sparks round it, the
+// sparks flying out.
+const GOLD = '#F2C94C'
+const RED = '#FF6B5A'
+const burst = (column: number, row: number, color: string): Mark[][] => [
+  [{ text: '·', column, row, color }],
+  [
+    { text: '✦', column, row, color },
+    { text: '·', column: column - 1, row, color },
+    { text: '·', column: column + 1, row, color },
+    { text: '·', column, row: row + 1, color },
+  ],
+  [
+    { text: '·', column: column - 1, row: row + 1, color },
+    { text: '·', column: column + 1, row: row + 1, color },
+  ],
+]
+const [GOLD_BURST, RED_BURST] = [burst(5, 1, GOLD), burst(14, 0, RED)]
+
 export const THEMES: Record<Exclude<ThemeName, 'seasonal'>, Theme> = {
-  classic: { body: '#D77757' },
+  classic: { body: '#D77757', width: 26, height: 8, restX: 4, restY: 2 },
   christmas: {
     body: '#9FD3F2',
-    hat: {
-      rows: [
-        '........RRRR..WW..',
-        '......RRRRRRRRWW..',
-        '....RRRRRRRRRR....',
-        '..WWWWWWWWWWWWWW..',
-      ],
-      colors: { R: '#E03C3C', W: '#F4F4F4' },
-    },
+    width: 40,
+    height: 12,
+    restX: 16,
+    restY: 6,
+    costume: [SANTA, SCARF],
+    props: [TREE],
+    background: Array.from({ length: 6 }, (_, frame) => ({
+      marks: FLAKES.map(([column, row], i) => ({
+        text: i % 2 === 0 ? '·' : '*',
+        column: column!,
+        row: (row! + frame) % 6,
+        color: SNOW,
+      })),
+    })),
   },
   halloween: {
-    body: '#D77757',
-    hat: {
-      rows: [
-        '..........PP......',
-        '........PPPP......',
-        '......GGGGGG......',
-        '..PPPPPPPPPPPPPP..',
+    body: '#E8833A',
+    width: 40,
+    height: 12,
+    restX: 8,
+    restY: 6,
+    // Carved: triangles for eyes, a jagged grin across his belly.
+    face: {
+      eyes: [
+        [5, 0],
+        [4, 1],
+        [5, 1],
+        [12, 0],
+        [12, 1],
+        [13, 1],
       ],
-      colors: { P: '#8A5CC8', G: '#6BBF59' },
+      mouth: [
+        [6, 2],
+        [11, 2],
+        [6, 3],
+        [7, 3],
+        [8, 3],
+        [10, 3],
+        [11, 3],
+      ],
     },
+    costume: [STEM],
+    background: [
+      { arts: [BAT_UP, ghost(6)] },
+      { arts: [BAT_DOWN, ghost(6)] },
+      { arts: [BAT_UP, ghost(4)] },
+      { arts: [BAT_DOWN, ghost(4)] },
+    ],
   },
   'lunar-new-year': {
     body: '#E5483B',
-    hat: {
-      rows: [
-        '..................',
-        '........RR........',
-        '......YYYYYY......',
-        '....YYYYYYYYYY....',
-      ],
-      colors: { Y: '#E8B739', R: '#B8231A' },
-    },
+    width: 40,
+    height: 12,
+    restX: 12,
+    restY: 6,
+    costume: [CAP, BELT],
+    props: [lantern(2), lantern(32)],
+    background: [
+      {},
+      { marks: GOLD_BURST[0] },
+      { marks: GOLD_BURST[1] },
+      { marks: [...GOLD_BURST[2]!, ...RED_BURST[0]!] },
+      { marks: RED_BURST[1] },
+      { marks: RED_BURST[2] },
+    ],
   },
 }
 
@@ -71,54 +218,64 @@ export function themeOn(now: number): Exclude<ThemeName, 'seasonal'> {
   return isFestival ? 'lunar-new-year' : 'classic'
 }
 
-// One frame's time, in milliseconds.
+// One frame's time, in milliseconds; the background steps one frame every BEAT.
 export const TICK = 150
-
-const WIDTH = 26
-const REST_X = 4
-
-// 13 cells across, room to walk four pixels either way; four rows, two more under
-// a hat, so he can hop two pixels with it on.
-function canvas(theme: Theme): { height: number; restY: number } {
-  return theme.hat ? { height: 12, restY: 6 } : { height: 8, restY: 2 }
-}
+export const BEAT = 600
 
 export const REST: Pose = { dx: 0, dy: 0, eyes: 'open', arms: [0, 0], stride: false, zs: 0 }
 
-// The holes of his eyes on row 1; shut, for a blink or a doze, they are gone.
-const EYES: Record<Pose['eyes'], number[]> = {
-  open: [5, 12],
-  left: [4, 11],
-  right: [6, 13],
-  shut: [],
+const FACE = {
+  eyes: [
+    [5, 1],
+    [12, 1],
+  ] as [number, number][],
+  mouth: [] as [number, number][],
 }
 
-// Row by row, the color of each pixel, undefined where none. His body spans x 3-14
-// and y 0-3, the arms stick out on row 2 and the four legs stand on row 4, as in
-// the banner; a hat sits on rows -4 to -1, its tip trailing behind him: as drawn
-// while he faces left or ahead, mirrored while he faces right.
-export function pixels(pose: Pose, theme: Theme = THEMES.classic): (string | undefined)[][] {
-  const { height, restY } = canvas(theme)
-  const grid = Array.from({ length: height }, () => Array<string | undefined>(WIDTH).fill(undefined))
-  const x0 = REST_X + pose.dx
-  const y0 = restY - pose.dy
-  const set = (x: number, y: number, color: string | undefined) => {
-    const row = grid[y0 + y]
-    if (row !== undefined && x0 + x >= 0 && x0 + x < WIDTH) row[x0 + x] = color
+// The holes of his eyes as he looks: a pixel aside, or none shut, for a blink or a
+// doze. Carved eyes (a theme's own face) stay put, which a shift would break up.
+const eyeHoles = (pose: Pose, eyes: [number, number][], isCarved: boolean): [number, number][] => {
+  if (pose.eyes === 'shut') return []
+  const shift = isCarved ? 0 : pose.eyes === 'left' ? -1 : pose.eyes === 'right' ? 1 : 0
+  return eyes.map(([x, y]) => [x + shift, y])
+}
+
+const backgroundAt = (theme: Theme, beat: number) =>
+  theme.background?.[beat % theme.background.length] ?? {}
+
+// Row by row, the color of each pixel, undefined where none: the props and the
+// background, then Clawd over them. His body spans x 3-14 and y 0-3, the arms stick
+// out on row 2 and the four legs stand on row 4, as in the banner.
+export function pixels(pose: Pose, theme: Theme = THEMES.classic, beat = 0): (string | undefined)[][] {
+  const grid = Array.from({ length: theme.height }, () => Array<string | undefined>(theme.width).fill(undefined))
+  const put = (x: number, y: number, color: string | undefined) => {
+    const row = grid[y]
+    if (row !== undefined && x >= 0 && x < theme.width) row[x] = color
   }
+  const paint = (art: Art, at: (x: number, y: number) => [number, number]) =>
+    art.rows.forEach((row, y) =>
+      [...row].forEach((key, x) => {
+        const color = art.colors[key]
+        if (color) put(...at(art.x + x, art.y + y), color)
+      }),
+    )
+  for (const art of [...(theme.props ?? []), ...(backgroundAt(theme, beat).arts ?? [])]) paint(art, (x, y) => [x, y])
+
+  const x0 = theme.restX + pose.dx
+  const y0 = theme.restY - pose.dy
+  const set = (x: number, y: number, color: string | undefined) => put(x0 + x, y0 + y, color)
+  const face = theme.face ?? FACE
   for (let y = 0; y < 4; y++) for (let x = 3; x <= 14; x++) set(x, y, theme.body)
-  for (const x of EYES[pose.eyes]) set(x, 1, undefined)
+  for (const [x, y] of [...eyeHoles(pose, face.eyes, theme.face !== undefined), ...face.mouth]) set(x, y, undefined)
   const [left, right] = pose.arms
   for (const x of [1, 2]) set(x, 2 - left, theme.body)
   for (const x of [15, 16]) set(x, 2 - right, theme.body)
   for (const x of pose.stride ? [3, 5, 12, 14] : [4, 6, 11, 13]) set(x, 4, theme.body)
-  const mirror = pose.eyes === 'right'
-  theme.hat?.rows.forEach((row, i) =>
-    [...row].forEach((key, x) => {
-      const color = theme.hat?.colors[key]
-      if (color) set(mirror ? row.length - 1 - x : x, i - 4, color)
-    }),
-  )
+  // A trailing costume as drawn while he faces left or ahead, mirrored as he faces right.
+  for (const art of theme.costume ?? []) {
+    const mirror = art.trails === true && pose.eyes === 'right'
+    paint(art, (x, y) => [x0 + (mirror ? 17 - x : x), y0 + y])
+  }
   return grid
 }
 
@@ -130,16 +287,22 @@ const ZS = [
   { text: 'z', dx: 1, dy: 0 },
   { text: 'Z', dx: 2, dy: -1 },
 ]
+const Z_COLOR = '#8a8a8a'
 
-const zCells = (pose: Pose, theme: Theme) => {
-  const right = (REST_X + pose.dx + 16) / 2
-  const head = (canvas(theme).restY - pose.dy) / 2
-  return ZS.slice(0, pose.zs).map(z => ({ text: z.text, column: right + z.dx, row: head + z.dy }))
+// The glyphs over the pixels: the background's marks where no pixel is, and his z's.
+function marks(pose: Pose, theme: Theme, grid: (string | undefined)[][], beat: number): Mark[] {
+  const isEmpty = (m: Mark) => [0, 1].every(dy => [0, 1].every(dx => grid[m.row * 2 + dy]?.[m.column * 2 + dx] === undefined))
+  const right = (theme.restX + pose.dx + 16) / 2
+  const head = (theme.restY - pose.dy) / 2
+  const zs = ZS.slice(0, pose.zs).map(z => ({ text: z.text, column: right + z.dx, row: head + z.dy, color: Z_COLOR }))
+  return [...(backgroundAt(theme, beat).marks ?? []).filter(isEmpty), ...zs].filter(
+    m => m.column >= 0 && m.column < theme.width / 2 && m.row >= 0 && m.row < theme.height / 2,
+  )
 }
 
 // A row's text in runs of one style: `color` the quadrants', `background` the rest
-// of a cell two colors fill, `dim` for his z's.
-export type Run = { text: string; color?: string; background?: string; dim?: boolean }
+// of a cell two colors fill.
+export type Run = { text: string; color?: string; background?: string }
 
 function cell(colors: (string | undefined)[]): Run {
   const [first] = colors.filter((c): c is string => c !== undefined)
@@ -149,23 +312,20 @@ function cell(colors: (string | undefined)[]): Run {
   return { text: QUADRANTS[mask]!, color: first, ...(other && { background: other }) }
 }
 
-export function cells(pose: Pose, theme: Theme = THEMES.classic): Run[][] {
-  const grid = pixels(pose, theme)
+export function cells(pose: Pose, theme: Theme = THEMES.classic, beat = 0): Run[][] {
+  const grid = pixels(pose, theme, beat)
   const rows: Run[][] = []
   for (let y = 0; y < grid.length; y += 2) {
     const row: Run[] = []
-    for (let x = 0; x < WIDTH; x += 2)
+    for (let x = 0; x < theme.width; x += 2)
       row.push(cell([grid[y]?.[x], grid[y]?.[x + 1], grid[y + 1]?.[x], grid[y + 1]?.[x + 1]]))
     rows.push(row)
   }
-  for (const z of zCells(pose, theme)) {
-    const row = rows[z.row]
-    if (row && z.column < row.length) row[z.column] = { text: z.text, dim: true }
-  }
+  for (const mark of marks(pose, theme, grid, beat)) rows[mark.row]![mark.column] = { text: mark.text, color: mark.color }
   return rows.map(merge)
 }
 
-const same = (a: Run, b: Run) => a.color === b.color && a.background === b.background && a.dim === b.dim
+const same = (a: Run, b: Run) => a.color === b.color && a.background === b.background
 
 function merge(row: Run[]): Run[] {
   return row.reduce<Run[]>((runs, run) => {
@@ -180,19 +340,19 @@ export const text = (rows: Run[][]) => rows.map(row => row.map(run => run.text).
 
 // A pixel is half a cell each way, so twice as tall as wide, as the terminal draws him.
 const PIXEL = { width: 3, height: 6 }
-const Z_COLOR = '#8a8a8a'
 
 export function svgSize(theme: Theme = THEMES.classic): { width: number; height: number } {
-  return { width: WIDTH * PIXEL.width, height: canvas(theme).height * PIXEL.height }
+  return { width: theme.width * PIXEL.width, height: theme.height * PIXEL.height }
 }
 
 // One path a color, each run of pixels a rectangle in it, so the gaps between
 // them (his eyes) keep their width at any scale; separate shapes snapped to the
 // screen's pixels drew one eye wider than the other.
-export function clawdSvg(pose: Pose, theme: Theme = THEMES.classic): string {
+export function clawdSvg(pose: Pose, theme: Theme = THEMES.classic, beat = 0): string {
+  const grid = pixels(pose, theme, beat)
   const paths = new Map<string, string>()
-  pixels(pose, theme).forEach((row, y) => {
-    for (let x = 0; x < WIDTH; x++) {
+  grid.forEach((row, y) => {
+    for (let x = 0; x < theme.width; x++) {
       const color = row[x]
       if (color === undefined) continue
       const start = x
@@ -203,10 +363,10 @@ export function clawdSvg(pose: Pose, theme: Theme = THEMES.classic): string {
     }
   })
   const shapes = [...paths].map(([color, d]) => `<path d="${d}" fill="${color}"/>`)
-  for (const z of zCells(pose, theme)) {
-    const x = z.column * 2 * PIXEL.width
-    const y = (z.row + 1) * 2 * PIXEL.height
-    shapes.push(`<text x="${x}" y="${y}" font-family="monospace" font-size="11" fill="${Z_COLOR}">${z.text}</text>`)
+  for (const mark of marks(pose, theme, grid, beat)) {
+    const x = mark.column * 2 * PIXEL.width
+    const y = (mark.row + 1) * 2 * PIXEL.height
+    shapes.push(`<text x="${x}" y="${y}" font-family="monospace" font-size="11" fill="${mark.color}">${mark.text}</text>`)
   }
   const { width, height } = svgSize(theme)
   return (
@@ -218,7 +378,7 @@ const pose = (changes: Partial<Pose>): Pose => ({ ...REST, ...changes })
 const hold = (frame: Pose, ticks: number): Pose[] => Array.from({ length: ticks }, () => frame)
 
 // A cell right, two, back past where he started to two cells left, and home, legs
-// alternating, eyes ahead. A cell a step keeps a hat's colors on their cells.
+// alternating, eyes ahead. A cell a step keeps his colors on their cells.
 const WALK = [2, 4, 4, 2, 0, -2, -4, -4, -2, 0]
 
 // What he does while Claude works, one picked at random after another.
@@ -252,9 +412,11 @@ const between = (random: () => number, low: number, high: number) => low + Math.
 
 // Plays Clawd: at rest, blinking or now and then dozing off every few seconds, and
 // while `working(true)` one animation after another, a short rest between, never
-// the same one twice running.
-export function animate($: EngineInterface, show: (frame: Pose) => void, random = Math.random) {
+// the same one twice running, the scene's background stepping on each BEAT.
+export function animate($: EngineInterface, show: { pose: (frame: Pose) => void; beat: (n: number) => void }, random = Math.random) {
   let timer: Timer | undefined
+  let background: Timer | undefined
+  let beat = 0
   let isWorking = false
   let last: string | undefined
 
@@ -262,10 +424,10 @@ export function animate($: EngineInterface, show: (frame: Pose) => void, random 
   const play = (frames: Pose[], done: () => void) => {
     timer?.cancel()
     let next = 1
-    show(frames[0] ?? REST)
+    show.pose(frames[0] ?? REST)
     const own = $.clock.every(TICK, () => {
       const frame = frames[next++]
-      if (frame !== undefined) return show(frame)
+      if (frame !== undefined) return show.pose(frame)
       own.cancel()
       done()
     })
@@ -274,7 +436,7 @@ export function animate($: EngineInterface, show: (frame: Pose) => void, random 
 
   const rest = () => {
     timer?.cancel()
-    show(REST)
+    show.pose(REST)
     timer = $.clock.after(between(random, 3000, 7000), () => play(random() < DOZE_ODDS ? DOZE : BLINK, rest))
   }
 
@@ -291,8 +453,11 @@ export function animate($: EngineInterface, show: (frame: Pose) => void, random 
     working(now: boolean) {
       if (now === isWorking) return
       isWorking = now
-      if (now) work()
-      else rest()
+      background?.cancel()
+      if (now) {
+        background = $.clock.every(BEAT, () => show.beat(++beat))
+        work()
+      } else rest()
     },
   }
 }

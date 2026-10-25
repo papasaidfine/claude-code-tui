@@ -1,6 +1,6 @@
 {
   "name": "session-rail",
-  "version": "0.8.4",
+  "version": "0.9.0",
   "description": "A Session pane beside the chat: environment, context, usage limits, cost by model and Clawd, like Claude Desktop's session rail",
   "author": { "name": "papasaidfine" },
   "license": "MIT",
@@ -15,7 +15,7 @@
     "theme": {
       "type": "string",
       "title": "Clawd's theme",
-      "description": "What Clawd wears. classic: his own orange. seasonal: a Santa hat for Christmas, a witch hat for Halloween, a skullcap for Lunar New Year, his own orange the rest of the year. Or one of those all year.",
+      "description": "Clawd's look and the scene around him. classic: his own orange. seasonal: Christmas, Halloween or Lunar New Year in their season, classic the rest of the year. Or one of those all year.",
       "options": ["classic", "seasonal", "christmas", "halloween", "lunar-new-year"],
       "default": "classic"
     }

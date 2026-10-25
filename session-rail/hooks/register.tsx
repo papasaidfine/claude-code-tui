@@ -27,6 +27,7 @@ const isContextOpen = atom({ plugin: 'session-rail', key: 'isContextOpen' } as c
 const isUsageOpen = atom({ plugin: 'session-rail', key: 'isUsageOpen' } as const, true)
 const isCostOpen = atom({ plugin: 'session-rail', key: 'isCostOpen' } as const, true)
 const pose = atom({ plugin: 'session-rail', key: 'pose' } as const, REST)
+const beat = atom({ plugin: 'session-rail', key: 'beat' } as const, 0)
 const theme = atom({ plugin: 'session-rail', key: 'theme' } as const, 'classic' as Exclude<ThemeName, 'seasonal'>)
 
 // Started with the session, its timers with it; a reload starts a new one.
@@ -77,7 +78,10 @@ export const register: Register = (on, options) => {
     })
     await refresh($)
     await dress($, chosen)
-    clawd = animate($, frame => void update($, pose, () => frame))
+    clawd = animate($, {
+      pose: frame => void update($, pose, () => frame),
+      beat: n => void update($, beat, () => n),
+    })
     clawd.start()
     if (options.openOnStart === true) await $.ui.open(OPEN)
 
@@ -133,7 +137,7 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const ui = $.ui.resolve(e)
     const { Box, Text, Button, Markdown } = ui
-    const [envNow, contextNow, limitsNow, costNow, envOpen, contextOpen, usageOpen, costOpen, poseNow, themeNow] = await Promise.all([
+    const [envNow, contextNow, limitsNow, costNow, envOpen, contextOpen, usageOpen, costOpen, poseNow, themeNow, beatNow] = await Promise.all([
       read($, env),
       read($, context),
       read($, limits),
@@ -144,6 +148,7 @@ export const register: Register = (on, options) => {
       read($, isCostOpen),
       read($, pose),
       read($, theme),
+      read($, beat),
     ])
     const dressed = THEMES[themeNow]
     const percent = contextNow.percent === null ? '—' : `${Math.round(contextNow.percent)}%`
@@ -297,13 +302,13 @@ export const register: Register = (on, options) => {
         </Box>
         <Box key="clawd" flexDirection="column" alignItems="center">
           {Svg ? (
-            <Svg source={clawdSvg(poseNow, dressed)} alt="Clawd" {...svgSize(dressed)} />
+            <Svg source={clawdSvg(poseNow, dressed, beatNow)} alt="Clawd" {...svgSize(dressed)} />
           ) : (
-            cells(poseNow, dressed).map(row => (
+            cells(poseNow, dressed, beatNow).map(row => (
               <Text>
                 {row.map(run =>
-                  run.color || run.dim ? (
-                    <Text color={run.color} backgroundColor={run.background} dimColor={run.dim}>
+                  run.color ? (
+                    <Text color={run.color} backgroundColor={run.background}>
                       {run.text}
                     </Text>
                   ) : (

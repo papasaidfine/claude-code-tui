@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
-import { cells, DOZE, REST, text as rowsOf, THEMES, TICK } from '../hooks/clawd'
+import { BEAT, cells, DOZE, REST, text as rowsOf, THEMES, TICK } from '../hooks/clawd'
 
 const PANE = {
   plugin: 'session-rail',
@@ -455,9 +455,9 @@ test('a step whose cost cannot be read is not requested again', async ($, on) =>
   expect(opts.requests).toBe(1)
 })
 
-// Clawd's rows in the drawing, top to bottom: the Texts of 13 cells of blocks and z's.
+// Clawd's rows in the drawing, top to bottom: the Texts of his canvas's cells.
 const clawdRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text?: string }[]> }) =>
-  (await ui.findAll({ type: 'Text' })).map(t => t.text ?? '').filter(row => /^[ ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█zZ]{13}$/u.test(row))
+  (await ui.findAll({ type: 'Text' })).map(t => t.text ?? '').filter(row => /^[ ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█zZ·*✦]{13,20}$/u.test(row))
 
 const turn = { turnId: 't1', answer: '', durationMs: 0, isAborted: false, reason: 'answer' } as const
 const classic = { options: { theme: 'classic' } }
@@ -508,7 +508,7 @@ test('the theme option dresses Clawd', { options: { theme: 'christmas' } }, asyn
   await ui.unmount()
 })
 
-test('seasonal dresses Clawd by the date: a witch hat in late October', { options: { theme: 'seasonal' } }, async ($, on) => {
+test('seasonal dresses Clawd by the date: a jack-o-lantern in late October', { options: { theme: 'seasonal' } }, async ($, on) => {
   await start($, on, { isRepo: false })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await clawdRows(ui)).toEqual(rowsOf(cells(REST, THEMES.halloween)))
@@ -526,5 +526,25 @@ test('with no theme chosen, Clawd wears his own orange, whatever the date', asyn
   await start($, on, { isRepo: false })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await clawdRows(ui)).toEqual(rowsOf(cells(REST)))
+  await ui.unmount()
+})
+
+test('the scene behind Clawd moves while Claude works and holds still at rest', { options: { theme: 'christmas' } }, async ($, on) => {
+  const clock = mock.clock(on, { now: NOW })
+  await start($, on, { isRepo: false, hasClock: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  // Snow, apart from him: the top row, over his hat.
+  const sky = async () => (await clawdRows(ui)).slice(0, 1).join()
+  const still = await sky()
+  await clock.advance(2 * BEAT)
+  expect(await sky()).toBe(still)
+
+  await $.turn.start({ text: 'hi', turnId: 't1' })
+  await clock.advance(BEAT)
+  expect(await sky()).not.toBe(still)
+  await $.turn.complete(turn)
+  const stopped = await sky()
+  await clock.advance(2 * BEAT)
+  expect(await sky()).toBe(stopped)
   await ui.unmount()
 })
