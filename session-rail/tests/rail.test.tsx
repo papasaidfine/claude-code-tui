@@ -35,6 +35,7 @@ type Opts = {
   percent?: number
   host?: string
   opened?: string[]
+  widths?: (number | undefined)[]
   registered?: unknown[]
   limits?: Limit[]
   cost?: number
@@ -59,6 +60,7 @@ async function start($: Parameters<TestBody>[0], on: Parameters<TestBody>[1], op
   const up = new Set<string>()
   on('ui.open', (_, e) => {
     opts.opened?.push(e.id)
+    opts.widths?.push(e.columns)
     up.add(e.id)
     return { value: { isPlaced: true } }
   })
@@ -209,10 +211,24 @@ test('the pane stays closed until /rail opens it', async ($, on) => {
   expect(result.text).toBe('Session pane opened.')
 })
 
+test('/rail asks for a narrow dock, not the engine share', async ($, on) => {
+  const widths: (number | undefined)[] = []
+  await start($, on, { isRepo: false, widths })
+  await $.command.run({
+    command: 'rail',
+    args: '',
+    origin: { kind: 'composer' },
+    presentation: { isFullscreen: true, columns: 200 },
+  })
+  expect(widths).toEqual([40])
+})
+
 test('with openOnStart, the pane opens as the session starts, and /rail still closes it', { options: { openOnStart: true } }, async ($, on) => {
   const opened: string[] = []
-  await start($, on, { isRepo: false, opened })
+  const widths: (number | undefined)[] = []
+  await start($, on, { isRepo: false, opened, widths })
   expect(opened).toEqual(['session-rail'])
+  expect(widths).toEqual([40])
 
   const result = await $.command.run({
     command: 'rail',

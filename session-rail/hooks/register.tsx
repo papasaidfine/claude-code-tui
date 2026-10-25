@@ -9,6 +9,10 @@ import { COLOR, ICON_ALT, ICON_SVG, meterSvg } from './svg'
 
 const PANE = 'session-rail'
 const TITLE = 'Session'
+// The dock's width: the cards' widest row (a Usage line with its reset time) and
+// some room, rather than the engine's share of a wide terminal. A width the person
+// drags the dock to wins.
+const OPEN = { id: PANE, title: TITLE, columns: 40 }
 
 // Nerd Font glyphs: md-laptop, fa-folder_o, dev-git_branch.
 const ICON = { host: '\u{F0322}', folder: '\uF114', branch: '\uE725' }
@@ -55,7 +59,7 @@ export const register: Register = (on, options) => {
       immediate: true,
     })
     await refresh($)
-    if (options.openOnStart === true) await $.ui.open({ id: PANE, title: TITLE })
+    if (options.openOnStart === true) await $.ui.open(OPEN)
 
     return started
   })
@@ -66,7 +70,7 @@ export const register: Register = (on, options) => {
 
       return { text: 'Session pane closed.' }
     }
-    await $.ui.open({ id: PANE, title: TITLE })
+    await $.ui.open(OPEN)
 
     return { text: 'Session pane opened.' }
   })
