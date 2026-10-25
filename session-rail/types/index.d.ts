@@ -41,8 +41,8 @@ export type Pose = {
   zs: number
 }
 
-// What Clawd wears, as the `theme` option names it; `auto` picks by the date.
-export type ThemeName = 'auto' | 'classic' | 'christmas' | 'halloween' | 'lunar-new-year'
+// What Clawd wears, as the `theme` option names it; `seasonal` picks by the date.
+export type ThemeName = 'classic' | 'seasonal' | 'christmas' | 'halloween' | 'lunar-new-year'
 
 declare module 'claude-code' {
   interface PluginState {
@@ -56,7 +56,7 @@ declare module 'claude-code' {
       isUsageOpen: boolean
       isCostOpen: boolean
       pose: Pose
-      theme: Exclude<ThemeName, 'auto'>
+      theme: Exclude<ThemeName, 'seasonal'>
     }
   }
 }

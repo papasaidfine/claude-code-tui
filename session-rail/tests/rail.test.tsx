@@ -508,7 +508,7 @@ test('the theme option dresses Clawd', { options: { theme: 'christmas' } }, asyn
   await ui.unmount()
 })
 
-test('auto dresses Clawd by the date: a witch hat in late October', async ($, on) => {
+test('seasonal dresses Clawd by the date: a witch hat in late October', { options: { theme: 'seasonal' } }, async ($, on) => {
   await start($, on, { isRepo: false })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await clawdRows(ui)).toEqual(rowsOf(cells(REST, THEMES.halloween)))
@@ -519,5 +519,12 @@ test('Clawd is an svg where the surface draws one', async ($, on) => {
   await start($, on, { isRepo: false })
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   expect(await svgAlt(ui, /Clawd/)).toBe('Clawd')
+  await ui.unmount()
+})
+
+test('with no theme chosen, Clawd wears his own orange, whatever the date', async ($, on) => {
+  await start($, on, { isRepo: false })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await clawdRows(ui)).toEqual(rowsOf(cells(REST)))
   await ui.unmount()
 })

@@ -27,7 +27,7 @@ const isContextOpen = atom({ plugin: 'session-rail', key: 'isContextOpen' } as c
 const isUsageOpen = atom({ plugin: 'session-rail', key: 'isUsageOpen' } as const, true)
 const isCostOpen = atom({ plugin: 'session-rail', key: 'isCostOpen' } as const, true)
 const pose = atom({ plugin: 'session-rail', key: 'pose' } as const, REST)
-const theme = atom({ plugin: 'session-rail', key: 'theme' } as const, 'classic' as Exclude<ThemeName, 'auto'>)
+const theme = atom({ plugin: 'session-rail', key: 'theme' } as const, 'classic' as Exclude<ThemeName, 'seasonal'>)
 
 // Started with the session, its timers with it; a reload starts a new one.
 let clawd: ReturnType<typeof animate> | undefined
@@ -45,9 +45,9 @@ async function refresh($: EngineInterface): Promise<void> {
   }
 }
 
-// `auto` follows the calendar, looked at again with every turn.
+// `seasonal` follows the calendar, looked at again with every turn.
 async function dress($: EngineInterface, chosen: ThemeName): Promise<void> {
-  const name = chosen === 'auto' ? themeOn(await $.clock.now()) : chosen
+  const name = chosen === 'seasonal' ? themeOn(await $.clock.now()) : chosen
   if ((await read($, theme)) !== name) await update($, theme, () => name)
 }
 
@@ -62,7 +62,10 @@ async function record($: EngineInterface, usage: TurnUsage): Promise<void> {
 }
 
 export const register: Register = (on, options) => {
-  const chosen = typeof options.theme === 'string' && options.theme in THEMES ? (options.theme as ThemeName) : 'auto'
+  const chosen: ThemeName =
+    options.theme === 'seasonal' || (typeof options.theme === 'string' && options.theme in THEMES)
+      ? (options.theme as ThemeName)
+      : 'classic'
 
   on('session.start', async ($, e, next) => {
     const started = await next(e)

@@ -11,7 +11,7 @@ export type Theme = { body: string; hat?: { rows: string[]; colors: Record<strin
 
 // A hat's colors meet only where a cell is full, so a cell is one color, or two
 // with one the background: no cell holds two colors and a gap.
-export const THEMES: Record<Exclude<ThemeName, 'auto'>, Theme> = {
+export const THEMES: Record<Exclude<ThemeName, 'seasonal'>, Theme> = {
   classic: { body: '#D77757' },
   christmas: {
     body: '#9FD3F2',
@@ -57,7 +57,7 @@ const DAY = 24 * 60 * 60 * 1000
 
 // The theme for a day: Christmas through Dec 26, Halloween's last two weeks of
 // October, Lunar New Year's festival; classic otherwise.
-export function themeOn(now: number): Exclude<ThemeName, 'auto'> {
+export function themeOn(now: number): Exclude<ThemeName, 'seasonal'> {
   const date = new Date(now)
   const month = date.getMonth() + 1
   const day = date.getDate()
@@ -85,7 +85,7 @@ function canvas(theme: Theme): { height: number; restY: number } {
 
 export const REST: Pose = { dx: 0, dy: 0, eyes: 'open', arms: [0, 0], stride: false, zs: 0 }
 
-const EYES: Record<Pose['eyes'], number[]> = { open: [5, 12], left: [4, 11], right: [6, 13], shut: [] }
+const EYES: Record<Pose['eyes'], number[]> = { open: [5, 12], left: [4, 11], right: [6, 13], shut: [4, 5, 12, 13] }
 
 // Row by row, the color of each pixel, undefined where none. His body spans x 3-14
 // and y 0-3, the arms stick out on row 2 and the four legs stand on row 4, as in

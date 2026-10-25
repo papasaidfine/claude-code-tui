@@ -17,10 +17,10 @@ test('at rest Clawd is the welcome banner, in a canvas with room around him', ()
 })
 
 test('no frame runs him or his hat off the canvas', () => {
-  // A body of 12 by 4, two eye holes when they show, two arms of two pixels and four legs.
+  // A body of 12 by 4, two eye holes open or two slits shut, two arms of two pixels and four legs.
   for (const theme of Object.values(THEMES))
     for (const frame of FRAMES) {
-      const eyes = frame.eyes === 'shut' ? 0 : 2
+      const eyes = frame.eyes === 'shut' ? 4 : 2
       expect(filled(pixels(frame, theme))).toBe(48 - eyes + 4 + 4 + hatPixels(theme))
       expect(text(cells(frame, theme)).every(row => row.length === 13)).toBe(true)
     }
@@ -70,7 +70,7 @@ test('dozing, his eyes shut and z s rise beside his head', () => {
   expect(DOZE.slice(0, -3).every(frame => frame.eyes === 'shut')).toBe(true)
 })
 
-test('auto dresses him by the date', () => {
+test('seasonal dresses him by the date', () => {
   const on = (iso: string) => themeOn(new Date(`${iso}T12:00:00`).getTime())
   expect(on('2026-12-24')).toBe('christmas')
   expect(on('2026-12-27')).toBe('classic')
@@ -88,4 +88,8 @@ test('the svg draws each pixel in its own color, a hat making it taller', () => 
   for (const color of ['#9FD3F2', '#E03C3C', '#F4F4F4']) expect(svg).toContain(`fill="${color}"`)
   expect(svgSize(THEMES.christmas).height).toBeGreaterThan(svgSize(THEMES.classic).height)
   expect(clawdSvg({ ...REST, zs: 2 })).toContain('>Z</text>')
+})
+
+test('shut, his eyes are lids, not gone', () => {
+  expect(text(cells(BLINK[0]!))[1]).toBe('   ▐▀███▀▌   ')
 })
