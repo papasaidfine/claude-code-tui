@@ -97,7 +97,8 @@ const EYES: Record<Pose['eyes'], number[]> = {
 
 // Row by row, the color of each pixel, undefined where none. His body spans x 3-14
 // and y 0-3, the arms stick out on row 2 and the four legs stand on row 4, as in
-// the banner; a hat sits on rows -4 to -1.
+// the banner; a hat sits on rows -4 to -1, its tip trailing behind him: as drawn
+// while he faces left or ahead, mirrored while he faces right.
 export function pixels(pose: Pose, theme: Theme = THEMES.classic): (string | undefined)[][] {
   const { height, restY } = canvas(theme)
   const grid = Array.from({ length: height }, () => Array<string | undefined>(WIDTH).fill(undefined))
@@ -113,10 +114,11 @@ export function pixels(pose: Pose, theme: Theme = THEMES.classic): (string | und
   for (const x of [1, 2]) set(x, 2 - left, theme.body)
   for (const x of [15, 16]) set(x, 2 - right, theme.body)
   for (const x of pose.stride ? [3, 5, 12, 14] : [4, 6, 11, 13]) set(x, 4, theme.body)
+  const mirror = pose.eyes === 'right'
   theme.hat?.rows.forEach((row, i) =>
     [...row].forEach((key, x) => {
       const color = theme.hat?.colors[key]
-      if (color) set(x, i - 4, color)
+      if (color) set(mirror ? row.length - 1 - x : x, i - 4, color)
     }),
   )
   return grid

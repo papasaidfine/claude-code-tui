@@ -94,3 +94,11 @@ test('a blink takes his eyes away; asleep they are lids', () => {
   expect(text(cells(BLINK[0]!))[1]).toBe('   ▐█████▌   ')
   expect(text(cells(DOZE[0]!))[1]).toBe('   ▐▀███▀▌   ')
 })
+
+test('a hat tip trails behind him: it swings left as he faces right', () => {
+  const facing = (eyes: 'left' | 'right') => text(cells({ ...REST, eyes }, THEMES.christmas))
+  expect(facing('left')[1]).toBe('     ▄██▄█   ')
+  expect(facing('right')[1]).toBe('   █▄██▄     ')
+  expect(facing('right')[2]).toBe(facing('left')[2])
+  expect(text(cells({ ...REST, eyes: 'right' }, THEMES.halloween))[1]).toBe('     █▄      ')
+})

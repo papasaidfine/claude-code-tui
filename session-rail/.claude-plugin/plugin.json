@@ -1,6 +1,6 @@
 {
   "name": "session-rail",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "A Session pane beside the chat: environment, context, usage limits, cost by model and Clawd, like Claude Desktop's session rail",
   "author": { "name": "papasaidfine" },
   "license": "MIT",
