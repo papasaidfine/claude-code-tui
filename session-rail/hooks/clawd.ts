@@ -82,7 +82,7 @@ const BAT_WINGS = [
   ['..PPPP..', 'PPPPPPPP', 'P......P'],
 ]
 const BAT_COLOR = '#8A5CC8'
-const BAT_RIGHTMOST = 32
+const BAT_RIGHTMOST = 36
 
 // A bat's flight across the top and back: a pixel or two a beat, dipping and
 // rising as it flutters, now and then darting back, its wings beating each beat.
@@ -107,23 +107,26 @@ const batAt = (beat: number): Art => {
   return { rows: BAT_WINGS[beat % 2]!, colors: { P: BAT_COLOR }, x, y }
 }
 
-// A jack-o'-lantern, lit: its eyes go dark for a double blink every six seconds.
+// A jack-o'-lantern, lit from inside: ribs down its sides, triangle eyes, a grin
+// with its teeth; its eyes go dark for a double blink every six seconds.
 const PUMPKIN = [
-  '.....G....',
-  '....G.....',
-  '.OOOOOOOO.',
-  'OOOOOOOOOO',
-  'OOYYOOYYOO',
-  'OOOOOOOOOO',
-  'OOYYYYYYOO',
-  '.OOOOOOOO.',
+  '........GG........',
+  '.........GG.......',
+  '...OOODOOOODOOO...',
+  '.OOODOOOOOOOODOOO.',
+  'OODOOOYOOOOYOOODOO',
+  'ODOOOYYYOOYYYOOODO',
+  'ODOYOOOOOOOOOOYODO',
+  'ODOOYYOYYYYOYYOODO',
+  '.OOOOYYYYYYYYOOOO.',
+  '...OOOOOOOOOOOO...',
 ]
 const pumpkinAt = (beat: number): Art => {
   const isBlinking = beat % 30 === 0 || beat % 30 === 2
   return {
-    rows: PUMPKIN.map((row, y) => (y === 4 && isBlinking ? row.replace(/Y/g, 'O') : row)),
-    colors: { G: '#5FA040', O: '#E8833A', Y: '#F2C94C' },
-    x: 30,
+    rows: PUMPKIN.map((row, y) => ((y === 4 || y === 5) && isBlinking ? row.replace(/Y/g, 'O') : row)),
+    colors: { G: '#5FA040', O: '#E8833A', D: '#B85A1E', Y: '#F2C94C' },
+    x: 26,
     y: 6,
   }
 }
@@ -178,10 +181,10 @@ export const THEMES: Record<Exclude<ThemeName, 'seasonal'>, Theme> = {
   },
   halloween: {
     body: '#F2F2F2',
-    width: 40,
-    height: 14,
-    restX: 6,
-    restY: 8,
+    width: 44,
+    height: 16,
+    restX: 4,
+    restY: 10,
     background: beat => ({ arts: [pumpkinAt(beat), batAt(beat)] }),
   },
   'lunar-new-year': {

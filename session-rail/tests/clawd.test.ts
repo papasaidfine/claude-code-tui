@@ -89,16 +89,17 @@ test('Christmas: a tree beside him, a Santa hat, and snow falling a row a beat',
 
 test('Halloween: a white Clawd, a bat fluttering back and forth, a jack-o-lantern that blinks', () => {
   const at = (beat: number) => text(cells(REST, THEMES.halloween, beat))
-  expect(at(1)[4]).toContain('▐▛███▜▌')
+  expect(at(1)[5]).toContain('▐▛███▜▌')
   expect(cells(REST, THEMES.halloween).flat().some(run => run.color === '#F2F2F2')).toBe(true)
   // Wings beat every beat; it crosses to the right and comes back.
   expect(at(5).slice(0, 2)).not.toEqual(at(6).slice(0, 2))
-  expect(Math.max(...FLIGHT.map(p => p.x))).toBe(32)
+  expect(Math.max(...FLIGHT.map(p => p.x))).toBe(THEMES.halloween.width - 8)
   expect(FLIGHT[0]).toEqual({ x: 0, y: 1 })
   expect(Math.abs(FLIGHT[FLIGHT.length - 1]!.x - FLIGHT[0]!.x)).toBeLessThanOrEqual(2)
-  // The lantern's eyes are lit, and dark for a moment.
-  expect(at(1)[5]).toContain('█▀█▀█')
-  expect(at(0)[5]).toContain('█████')
+  // The lantern's eyes are lit, and dark for a moment: the pixel below an eye's tip.
+  const eye = (beat: number) => pixels(REST, THEMES.halloween, beat)[6 + 5]![26 + 6]
+  expect(eye(1)).toBe('#F2C94C')
+  expect(eye(0)).toBe('#E8833A')
 })
 
 test('Lunar New Year: lanterns either side, a gold belt, fireworks bursting in turn', () => {
