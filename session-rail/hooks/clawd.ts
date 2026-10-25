@@ -85,14 +85,12 @@ function canvas(theme: Theme): { height: number; restY: number } {
 
 export const REST: Pose = { dx: 0, dy: 0, eyes: 'open', arms: [0, 0], stride: false, zs: 0 }
 
-// The holes of his eyes on row 1. Shut for a blink they are gone; closed in sleep
-// there are none either, a lid drawn over each instead (`lids`).
+// The holes of his eyes on row 1; shut, for a blink or a doze, they are gone.
 const EYES: Record<Pose['eyes'], number[]> = {
   open: [5, 12],
   left: [4, 11],
   right: [6, 13],
   shut: [],
-  closed: [],
 }
 
 // Row by row, the color of each pixel, undefined where none. His body spans x 3-14
@@ -139,25 +137,6 @@ const zCells = (pose: Pose, theme: Theme) => {
   return ZS.slice(0, pose.zs).map(z => ({ text: z.text, column: right + z.dx, row: head + z.dy }))
 }
 
-// A closed eye: a line half a cell wide on the cell of the open eye, as thin as
-// the terminal draws a line, where a pixel would be thicker than the eye. The
-// open eyes are pixels 5 and 12 of row 1, in a cell's right half and left half.
-const lids = (pose: Pose, theme: Theme) => {
-  if (pose.eyes !== 'closed') return []
-  const x0 = REST_X + pose.dx
-  const y0 = canvas(theme).restY - pose.dy
-  return [
-    { text: '╶', x: x0 + 5, column: (x0 + 4) / 2, row: y0 / 2 },
-    { text: '╴', x: x0 + 12, column: (x0 + 12) / 2, row: y0 / 2 },
-  ]
-}
-
-// A lid is the body's color, darkened.
-export function lidColor(theme: Theme): string {
-  const dark = (at: number) => Math.round(parseInt(theme.body.slice(at, at + 2), 16) * 0.4)
-  return `#${[1, 3, 5].map(at => dark(at).toString(16).padStart(2, '0')).join('')}`
-}
-
 // A row's text in runs of one style: `color` the quadrants', `background` the rest
 // of a cell two colors fill, `dim` for his z's.
 export type Run = { text: string; color?: string; background?: string; dim?: boolean }
@@ -183,10 +162,6 @@ export function cells(pose: Pose, theme: Theme = THEMES.classic): Run[][] {
     const row = rows[z.row]
     if (row && z.column < row.length) row[z.column] = { text: z.text, dim: true }
   }
-  for (const lid of lids(pose, theme)) {
-    const row = rows[lid.row]
-    if (row) row[lid.column] = { text: lid.text, color: lidColor(theme), background: theme.body }
-  }
   return rows.map(merge)
 }
 
@@ -211,24 +186,23 @@ export function svgSize(theme: Theme = THEMES.classic): { width: number; height:
   return { width: WIDTH * PIXEL.width, height: canvas(theme).height * PIXEL.height }
 }
 
+// One path a color, each run of pixels a rectangle in it, so the gaps between
+// them (his eyes) keep their width at any scale; separate shapes snapped to the
+// screen's pixels drew one eye wider than the other.
 export function clawdSvg(pose: Pose, theme: Theme = THEMES.classic): string {
-  const shapes: string[] = []
+  const paths = new Map<string, string>()
   pixels(pose, theme).forEach((row, y) => {
     for (let x = 0; x < WIDTH; x++) {
       const color = row[x]
       if (color === undefined) continue
       const start = x
       while (row[x + 1] === color) x++
-      shapes.push(
-        `<rect x="${start * PIXEL.width}" y="${y * PIXEL.height}" width="${(x - start + 1) * PIXEL.width}" height="${PIXEL.height}" fill="${color}"/>`,
-      )
+      const width = (x - start + 1) * PIXEL.width
+      const run = `M${start * PIXEL.width} ${y * PIXEL.height}h${width}v${PIXEL.height}h-${width}z`
+      paths.set(color, (paths.get(color) ?? '') + run)
     }
   })
-  // As the terminal draws it, across the middle of the cell.
-  for (const lid of lids(pose, theme)) {
-    const y = (lid.row * 2 + 1) * PIXEL.height - 0.75
-    shapes.push(`<rect x="${lid.x * PIXEL.width}" y="${y}" width="${PIXEL.width}" height="1.5" fill="${lidColor(theme)}"/>`)
-  }
+  const shapes = [...paths].map(([color, d]) => `<path d="${d}" fill="${color}"/>`)
   for (const z of zCells(pose, theme)) {
     const x = z.column * 2 * PIXEL.width
     const y = (z.row + 1) * 2 * PIXEL.height
@@ -236,8 +210,7 @@ export function clawdSvg(pose: Pose, theme: Theme = THEMES.classic): string {
   }
   const { width, height } = svgSize(theme)
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" ` +
-    `shape-rendering="crispEdges">${shapes.join('')}</svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${shapes.join('')}</svg>`
   )
 }
 
@@ -264,9 +237,9 @@ export const ANIMATIONS: Record<string, Pose[]> = {
 
 export const BLINK = [pose({ eyes: 'shut' })]
 
-// Eyes closed, arms down, z's rising five times over (some nine seconds); then a
+// Eyes shut, arms down, z's rising five times over (some nine seconds); then a
 // stretch as he wakes.
-const asleep = pose({ eyes: 'closed', arms: [-1, -1] })
+const asleep = pose({ eyes: 'shut', arms: [-1, -1] })
 export const DOZE = [
   ...Array.from({ length: 5 }, () => [0, 1, 2].flatMap(zs => hold({ ...asleep, zs }, 4))).flat(),
   ...hold(pose({ arms: [2, 2] }), 3),

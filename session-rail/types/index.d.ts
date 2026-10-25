@@ -31,12 +31,11 @@ export type CostInfo = {
 
 // One frame of Clawd, in his pixels from where he rests: `dx` right, `dy` up, each
 // arm (left, right) raised a pixel per step (lowered below 0), and `stride` his legs
-// set wide, as midway through a step; `zs` the z's beside him as he dozes. `shut`
-// eyes are a blink's, gone; `closed` are a doze's, lids.
+// set wide, as midway through a step; `zs` the z's beside him as he dozes.
 export type Pose = {
   dx: number
   dy: number
-  eyes: 'open' | 'shut' | 'closed' | 'left' | 'right'
+  eyes: 'open' | 'shut' | 'left' | 'right'
   arms: [number, number]
   stride: boolean
   zs: number

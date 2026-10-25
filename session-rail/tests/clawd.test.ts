@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { ANIMATIONS, BLINK, cells, clawdSvg, DOZE, lidColor, pixels, REST, svgSize, text, THEMES, themeOn } from '../hooks/clawd'
+import { ANIMATIONS, BLINK, cells, clawdSvg, DOZE, pixels, REST, svgSize, text, THEMES, themeOn } from '../hooks/clawd'
 
 const FRAMES = [REST, ...Object.values(ANIMATIONS).flat(), ...BLINK, ...DOZE]
 const filled = (grid: (string | undefined)[][]) => grid.flat().filter(Boolean).length
@@ -17,10 +17,10 @@ test('at rest Clawd is the welcome banner, in a canvas with room around him', ()
 })
 
 test('no frame runs him or his hat off the canvas', () => {
-  // A body of 12 by 4, two eye holes open, none shut or closed; two arms of two pixels and four legs.
+  // A body of 12 by 4, two eye holes open and none shut; two arms of two pixels and four legs.
   for (const theme of Object.values(THEMES))
     for (const frame of FRAMES) {
-      const eyes = frame.eyes === 'shut' || frame.eyes === 'closed' ? 0 : 2
+      const eyes = frame.eyes === 'shut' ? 0 : 2
       expect(filled(pixels(frame, theme))).toBe(48 - eyes + 4 + 4 + hatPixels(theme))
       expect(text(cells(frame, theme)).every(row => row.length === 13)).toBe(true)
     }
@@ -59,7 +59,7 @@ test('the Christmas Clawd is light blue under a red hat with a white brim and po
   expect(runs.some(run => run.color === '#E03C3C' && run.background === '#F4F4F4')).toBe(true)
 })
 
-test('dozing, his eyes closed and z s rise beside his head', () => {
+test('dozing, his eyes shut and z s rise beside his head', () => {
   const dozing = DOZE.filter(frame => frame.zs === 2)
   expect(dozing.length).toBeGreaterThan(0)
   for (const theme of Object.values(THEMES)) {
@@ -67,7 +67,7 @@ test('dozing, his eyes closed and z s rise beside his head', () => {
     expect(rows.join('')).toContain('z')
     expect(rows.join('')).toContain('Z')
   }
-  expect(DOZE.slice(0, -3).every(frame => frame.eyes === 'closed')).toBe(true)
+  expect(DOZE.slice(0, -3).every(frame => frame.eyes === 'shut')).toBe(true)
 })
 
 test('seasonal dresses him by the date', () => {
@@ -90,14 +90,17 @@ test('the svg draws each pixel in its own color, a hat making it taller', () => 
   expect(clawdSvg({ ...REST, zs: 2 })).toContain('>Z</text>')
 })
 
-test('a blink takes his eyes away; asleep they are thin lids, no bigger than open eyes', () => {
+test('a blink or a doze takes his eyes away', () => {
   expect(text(cells(BLINK[0]!))[1]).toBe('   ▐█████▌   ')
-  const asleep = cells(DOZE[0]!)
-  expect(text(asleep)[1]).toBe('   ▐╶███╴▌   ')
-  const lid = asleep[1]!.find(run => run.text === '╶')
-  expect(lid).toEqual({ text: '╶', color: lidColor(THEMES.classic), background: THEMES.classic.body })
-  expect(lidColor(THEMES.classic)).toBe('#563023')
-  expect(clawdSvg(DOZE[0]!)).toContain('height="1.5"')
+  expect(text(cells(DOZE[0]!))[1]).toBe('   ▐█████▌   ')
+})
+
+test('the svg is one path a color, unsnapped, so his eyes keep one width at any scale', () => {
+  const svg = clawdSvg(REST)
+  expect(svg).not.toContain('crispEdges')
+  expect(svg.split('<path').length - 1).toBe(1)
+  // The row of eyes: three runs, the eyes the two gaps between them, each a pixel wide.
+  expect(svg).toContain('M21 18h6v6h-6zM30 18h18v6h-18zM51 18h6v6h-6z')
 })
 
 test('a hat tip trails behind him: it swings left as he faces right', () => {
