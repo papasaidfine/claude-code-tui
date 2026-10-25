@@ -4,7 +4,7 @@ Mods that bring pieces of Claude Desktop's Claude Code UI to the Claude Code CLI
 
 | Mod | What it adds |
 |---|---|
-| [session-rail](#session-rail) | A **Session** pane beside the chat: environment, context usage, rate limits and cost by model |
+| [session-rail](#session-rail) | A **Session** pane beside the chat: environment, context usage, rate limits, cost by model, and an animated Clawd |
 
 ## Requirements
 
@@ -63,6 +63,10 @@ What the session has cost so far, the same total `/cost` prints. Unfolded, it li
 The per-model amounts are estimated from each response's token counts at list prices, with prompt-cache writes priced at the 1-hour rate. They can drift from `/cost`'s per-model figures by a little. Spend the mod could not attribute to a model shows as **Other**: requests made before the mod loaded, models it has no price for, small side requests such as session titles, and the premium on fast-mode responses. The total is always the engine's own.
 
 `/clear` starts the count over, as it does for `/cost`.
+
+### Clawd
+
+Clawd, the critter from Claude Code's welcome banner, sits below the cards. While Claude works he keeps busy, one animation after another picked at random: he blinks, looks around, hops, walks, waves or types. When the turn ends he settles down and just blinks now and then.
 
 ### When it updates
 

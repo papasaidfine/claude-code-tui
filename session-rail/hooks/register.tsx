@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderChildren, TurnUsage } from 'claude-code'
 
 import type { ContextInfo, CostInfo, Env, Limit } from '../types'
+import { animate, CLAWD_COLOR, cells, clawdSvg, REST, SVG_SIZE } from './clawd'
 import { readEnv, readUsage } from './collect'
 import { bar, level, tokens, usd } from './format'
 import { addSpend, costRows, price, settle } from './pricing'
@@ -25,6 +26,10 @@ const isEnvOpen = atom({ plugin: 'session-rail', key: 'isEnvOpen' } as const, tr
 const isContextOpen = atom({ plugin: 'session-rail', key: 'isContextOpen' } as const, false)
 const isUsageOpen = atom({ plugin: 'session-rail', key: 'isUsageOpen' } as const, true)
 const isCostOpen = atom({ plugin: 'session-rail', key: 'isCostOpen' } as const, true)
+const pose = atom({ plugin: 'session-rail', key: 'pose' } as const, REST)
+
+// Started with the session, its timers with it; a reload starts a new one.
+let clawd: ReturnType<typeof animate> | undefined
 
 // A source that fails keeps its last good value.
 async function refresh($: EngineInterface): Promise<void> {
@@ -59,6 +64,8 @@ export const register: Register = (on, options) => {
       immediate: true,
     })
     await refresh($)
+    clawd = animate($, frame => void update($, pose, () => frame))
+    clawd.start()
     if (options.openOnStart === true) await $.ui.open(OPEN)
 
     return started
@@ -75,7 +82,15 @@ export const register: Register = (on, options) => {
     return { text: 'Session pane opened.' }
   })
 
+  // Clawd moves while the main loop works; a subagent's turns leave him be.
+  on('turn.start', ($, e, next) => {
+    if (e.agentId === undefined) clawd?.working(true)
+
+    return next(e)
+  })
+
   on('turn.complete', async ($, e, next) => {
+    if (e.agentId === undefined) clawd?.working(false)
     const done = await next(e)
     void refresh($)
 
@@ -102,7 +117,7 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const ui = $.ui.resolve(e)
     const { Box, Text, Button, Markdown } = ui
-    const [envNow, contextNow, limitsNow, costNow, envOpen, contextOpen, usageOpen, costOpen] = await Promise.all([
+    const [envNow, contextNow, limitsNow, costNow, envOpen, contextOpen, usageOpen, costOpen, poseNow] = await Promise.all([
       read($, env),
       read($, context),
       read($, limits),
@@ -111,6 +126,7 @@ export const register: Register = (on, options) => {
       read($, isContextOpen),
       read($, isUsageOpen),
       read($, isCostOpen),
+      read($, pose),
     ])
     const percent = contextNow.percent === null ? '—' : `${Math.round(contextNow.percent)}%`
     // Every surface but the terminal has Svg: drawn icons and meters there, since its
@@ -260,6 +276,13 @@ export const register: Register = (on, options) => {
                 <Text>{usd(row.usd)}</Text>
               </Box>
             ))}
+        </Box>
+        <Box key="clawd" flexDirection="column" alignItems="center">
+          {Svg ? (
+            <Svg source={clawdSvg(poseNow)} alt="Clawd" {...SVG_SIZE} />
+          ) : (
+            cells(poseNow).map(row => <Text color={CLAWD_COLOR}>{row}</Text>)
+          )}
         </Box>
       </Box>
     )

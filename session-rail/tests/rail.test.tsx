@@ -1,5 +1,7 @@
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
+
+import { cells, REST, TICK } from '../hooks/clawd'
 
 const PANE = {
   plugin: 'session-rail',
@@ -36,6 +38,8 @@ type Opts = {
   host?: string
   opened?: string[]
   widths?: (number | undefined)[]
+  // A test that holds the clock (mock.clock) answers $.clock itself.
+  hasClock?: boolean
   registered?: unknown[]
   limits?: Limit[]
   cost?: number
@@ -72,7 +76,9 @@ async function start($: Parameters<TestBody>[0], on: Parameters<TestBody>[1], op
     value: [...up].map(id => ({ id, title: id, isShown: true, isFocused: false, isPlaced: true })),
   }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('clock.now', () => ({ value: NOW }))
+  on('turn.start', (_, e) => ({ turnId: e.turnId }))
+  on('turn.complete', () => ({ text: '' }))
+  if (!opts.hasClock) on('clock.now', () => ({ value: NOW }))
   on('session.cwd', () => ({ value: '/home/u/src/proj' }))
   on('env.get', () => ({ value: '/home/u' }))
   on('process.run', (_, e) => {
@@ -447,4 +453,54 @@ test('a step whose cost cannot be read is not requested again', async ($, on) =>
   const { result } = await step($, opts, usage('claude-opus-5-5', 10, 10))
   expect(result.stopReason).toBe('end_turn')
   expect(opts.requests).toBe(1)
+})
+
+// Clawd's rows in the drawing: the four Texts in his color, top to bottom.
+const clawdRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text?: string; props: Record<string, unknown> }[]> }) =>
+  (await ui.findAll({ type: 'Text' })).filter(t => t.props.color === '#D77757').map(t => t.text ?? '')
+
+const turn = { turnId: 't1', answer: '', durationMs: 0, isAborted: false, reason: 'answer' } as const
+
+test('Clawd rests below the cards and blinks every few seconds', async ($, on) => {
+  const clock = mock.clock(on, { now: NOW })
+  await start($, on, { isRepo: false, hasClock: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await clawdRows(ui)).toEqual(cells(REST))
+
+  const shut = cells({ ...REST, eyes: 'shut' })
+  let blinks = 0
+  for (let t = 0; t <= 7200; t += TICK) {
+    await clock.advance(TICK)
+    if (JSON.stringify(await clawdRows(ui)) === JSON.stringify(shut)) blinks++
+  }
+  expect(blinks).toBeGreaterThan(0)
+  await ui.unmount()
+})
+
+test('Clawd moves while a main-loop turn runs, and rests when it ends', async ($, on) => {
+  const clock = mock.clock(on, { now: NOW })
+  await start($, on, { isRepo: false, hasClock: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  await $.turn.start({ text: '', turnId: 'a1', agentId: 'sub' })
+  expect(await clawdRows(ui)).toEqual(cells(REST))
+
+  await $.turn.start({ text: 'hi', turnId: 't1' })
+  const seen = new Set([JSON.stringify(await clawdRows(ui))])
+  for (let t = 0; t < 3000; t += TICK) {
+    await clock.advance(TICK)
+    seen.add(JSON.stringify(await clawdRows(ui)))
+  }
+  expect(seen.size).toBeGreaterThan(3)
+
+  await $.turn.complete(turn)
+  expect(await clawdRows(ui)).toEqual(cells(REST))
+  await ui.unmount()
+})
+
+test('Clawd is an svg where the surface draws one', async ($, on) => {
+  await start($, on, { isRepo: false })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await svgAlt(ui, /Clawd/)).toBe('Clawd')
+  await ui.unmount()
 })

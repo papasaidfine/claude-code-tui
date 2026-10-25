@@ -1,7 +1,7 @@
 {
   "name": "session-rail",
-  "version": "0.5.1",
-  "description": "A Session pane beside the chat: environment, context, usage limits and cost by model, like Claude Desktop's session rail",
+  "version": "0.6.0",
+  "description": "A Session pane beside the chat: environment, context, usage limits, cost by model and Clawd, like Claude Desktop's session rail",
   "author": { "name": "papasaidfine" },
   "license": "MIT",
   "repository": "https://github.com/papasaidfine/claude-code-tui",

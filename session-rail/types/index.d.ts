@@ -29,6 +29,17 @@ export type CostInfo = {
   models: ModelCost[]
 }
 
+// One frame of Clawd, in his pixels from where he rests: `dx` right, `dy` up, each
+// arm (left, right) raised a pixel per step (lowered below 0), and `stride` his legs
+// set wide, as midway through a step.
+export type Pose = {
+  dx: number
+  dy: number
+  eyes: 'open' | 'shut' | 'left' | 'right'
+  arms: [number, number]
+  stride: boolean
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'session-rail': {
@@ -40,6 +51,7 @@ declare module 'claude-code' {
       isContextOpen: boolean
       isUsageOpen: boolean
       isCostOpen: boolean
+      pose: Pose
     }
   }
 }
