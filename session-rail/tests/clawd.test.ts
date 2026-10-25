@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { ANIMATIONS, BLINK, cells, clawdSvg, DOZE, pixels, REST, svgSize, text, THEMES, themeOn } from '../hooks/clawd'
+import { ANIMATIONS, BLINK, cells, clawdSvg, DOZE, lidColor, pixels, REST, svgSize, text, THEMES, themeOn } from '../hooks/clawd'
 
 const FRAMES = [REST, ...Object.values(ANIMATIONS).flat(), ...BLINK, ...DOZE]
 const filled = (grid: (string | undefined)[][]) => grid.flat().filter(Boolean).length
@@ -17,10 +17,10 @@ test('at rest Clawd is the welcome banner, in a canvas with room around him', ()
 })
 
 test('no frame runs him or his hat off the canvas', () => {
-  // A body of 12 by 4, two eye holes open, none shut, two slits closed; two arms of two pixels and four legs.
+  // A body of 12 by 4, two eye holes open, none shut or closed; two arms of two pixels and four legs.
   for (const theme of Object.values(THEMES))
     for (const frame of FRAMES) {
-      const eyes = { shut: 0, closed: 4 }[frame.eyes as string] ?? 2
+      const eyes = frame.eyes === 'shut' || frame.eyes === 'closed' ? 0 : 2
       expect(filled(pixels(frame, theme))).toBe(48 - eyes + 4 + 4 + hatPixels(theme))
       expect(text(cells(frame, theme)).every(row => row.length === 13)).toBe(true)
     }
@@ -90,9 +90,14 @@ test('the svg draws each pixel in its own color, a hat making it taller', () => 
   expect(clawdSvg({ ...REST, zs: 2 })).toContain('>Z</text>')
 })
 
-test('a blink takes his eyes away; asleep they are lids', () => {
+test('a blink takes his eyes away; asleep they are thin lids, no bigger than open eyes', () => {
   expect(text(cells(BLINK[0]!))[1]).toBe('   ▐█████▌   ')
-  expect(text(cells(DOZE[0]!))[1]).toBe('   ▐▀███▀▌   ')
+  const asleep = cells(DOZE[0]!)
+  expect(text(asleep)[1]).toBe('   ▐╶███╴▌   ')
+  const lid = asleep[1]!.find(run => run.text === '╶')
+  expect(lid).toEqual({ text: '╶', color: lidColor(THEMES.classic), background: THEMES.classic.body })
+  expect(lidColor(THEMES.classic)).toBe('#563023')
+  expect(clawdSvg(DOZE[0]!)).toContain('height="1.5"')
 })
 
 test('a hat tip trails behind him: it swings left as he faces right', () => {

@@ -85,14 +85,14 @@ function canvas(theme: Theme): { height: number; restY: number } {
 
 export const REST: Pose = { dx: 0, dy: 0, eyes: 'open', arms: [0, 0], stride: false, zs: 0 }
 
-// The holes of his eyes on row 1: shut for a blink they are gone, closed in sleep
-// they are lids, a slit two pixels wide.
+// The holes of his eyes on row 1. Shut for a blink they are gone; closed in sleep
+// there are none either, a lid drawn over each instead (`lids`).
 const EYES: Record<Pose['eyes'], number[]> = {
   open: [5, 12],
   left: [4, 11],
   right: [6, 13],
   shut: [],
-  closed: [4, 5, 12, 13],
+  closed: [],
 }
 
 // Row by row, the color of each pixel, undefined where none. His body spans x 3-14
@@ -139,6 +139,25 @@ const zCells = (pose: Pose, theme: Theme) => {
   return ZS.slice(0, pose.zs).map(z => ({ text: z.text, column: right + z.dx, row: head + z.dy }))
 }
 
+// A closed eye: a line half a cell wide on the cell of the open eye, as thin as
+// the terminal draws a line, where a pixel would be thicker than the eye. The
+// open eyes are pixels 5 and 12 of row 1, in a cell's right half and left half.
+const lids = (pose: Pose, theme: Theme) => {
+  if (pose.eyes !== 'closed') return []
+  const x0 = REST_X + pose.dx
+  const y0 = canvas(theme).restY - pose.dy
+  return [
+    { text: '╶', x: x0 + 5, column: (x0 + 4) / 2, row: y0 / 2 },
+    { text: '╴', x: x0 + 12, column: (x0 + 12) / 2, row: y0 / 2 },
+  ]
+}
+
+// A lid is the body's color, darkened.
+export function lidColor(theme: Theme): string {
+  const dark = (at: number) => Math.round(parseInt(theme.body.slice(at, at + 2), 16) * 0.4)
+  return `#${[1, 3, 5].map(at => dark(at).toString(16).padStart(2, '0')).join('')}`
+}
+
 // A row's text in runs of one style: `color` the quadrants', `background` the rest
 // of a cell two colors fill, `dim` for his z's.
 export type Run = { text: string; color?: string; background?: string; dim?: boolean }
@@ -163,6 +182,10 @@ export function cells(pose: Pose, theme: Theme = THEMES.classic): Run[][] {
   for (const z of zCells(pose, theme)) {
     const row = rows[z.row]
     if (row && z.column < row.length) row[z.column] = { text: z.text, dim: true }
+  }
+  for (const lid of lids(pose, theme)) {
+    const row = rows[lid.row]
+    if (row) row[lid.column] = { text: lid.text, color: lidColor(theme), background: theme.body }
   }
   return rows.map(merge)
 }
@@ -201,6 +224,11 @@ export function clawdSvg(pose: Pose, theme: Theme = THEMES.classic): string {
       )
     }
   })
+  // As the terminal draws it, across the middle of the cell.
+  for (const lid of lids(pose, theme)) {
+    const y = (lid.row * 2 + 1) * PIXEL.height - 0.75
+    shapes.push(`<rect x="${lid.x * PIXEL.width}" y="${y}" width="${PIXEL.width}" height="1.5" fill="${lidColor(theme)}"/>`)
+  }
   for (const z of zCells(pose, theme)) {
     const x = z.column * 2 * PIXEL.width
     const y = (z.row + 1) * 2 * PIXEL.height
