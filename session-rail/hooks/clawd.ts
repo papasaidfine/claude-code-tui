@@ -13,8 +13,12 @@ type Art = { rows: string[]; colors: Record<string, string>; x: number; y: numbe
 // A glyph of the background in a cell of its own, drawn only where nothing else is.
 type Mark = { text: string; column: number; row: number; color: string }
 
-// A theme: his body's color, what he wears, and the scene around him. A costume that `trails` swings behind him as
-// he turns; the background steps a frame at a time while Claude works.
+// What moves in a scene at one beat: arts drawn among the props, marks over the gaps.
+type Scenery = { arts?: Art[]; marks?: Mark[] }
+
+// A theme: his body's color, what he wears, and the scene around him. A costume
+// that `trails` swings behind him as he turns; the background is what moves at each
+// beat, Claude working or not.
 export type Theme = {
   body: string
   width: number
@@ -23,7 +27,7 @@ export type Theme = {
   restY: number
   costume?: (Art & { trails?: boolean })[]
   props?: Art[]
-  background?: { arts?: Art[]; marks?: Mark[] }[]
+  background?: (beat: number) => Scenery
 }
 
 // Every art keeps its colors from meeting a gap in a cell: a cell is one color, or
@@ -67,16 +71,62 @@ const FLAKES = [
   [1, 4],
 ]
 
-const bat = (rows: string[]): Art => ({ rows, colors: { P: '#8A5CC8' }, x: 32, y: 0 })
-const BAT_UP = bat(['P..PP..P', 'PPPPPPPP', '..PPPP..', '........'])
-const BAT_DOWN = bat(['........', '..PPPP..', 'PPPPPPPP', 'P......P'])
+// How many beats a slow background (snow, fireworks) holds each frame.
+const SLOW = 3
 
-const ghost = (y: number): Art => ({
-  rows: ['..WWWW..', '.WWWWWW.', 'WW.WW.WW', 'WWWWWWWW', 'WWWWWWWW', 'W.WW.WW.'],
-  colors: { W: '#EDEDED' },
-  x: 32,
-  y,
-})
+const snowAt = (frame: number): Mark[] =>
+  FLAKES.map(([column, row], i) => ({ text: i % 2 === 0 ? '·' : '*', column: column!, row: (row! + frame) % 6, color: SNOW }))
+
+const BAT_WINGS = [
+  ['P..PP..P', 'PPPPPPPP', '..PPPP..'],
+  ['..PPPP..', 'PPPPPPPP', 'P......P'],
+]
+const BAT_COLOR = '#8A5CC8'
+const BAT_RIGHTMOST = 32
+
+// A bat's flight across the top and back: a pixel or two a beat, dipping and
+// rising as it flutters, now and then darting back, its wings beating each beat.
+// The same flight every time, from a fixed seed.
+export const FLIGHT = ((): { x: number; y: number }[] => {
+  let seed = 7
+  const random = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648
+  const path: { x: number; y: number }[] = []
+  let [x, y, way] = [0, 1, 1]
+  for (;;) {
+    path.push({ x, y })
+    x = random() < 0.15 ? x - way : x + way * (1 + Math.floor(random() * 2))
+    y = Math.max(0, Math.min(3, y + Math.floor(random() * 3) - 1))
+    if (x >= BAT_RIGHTMOST) [x, way] = [BAT_RIGHTMOST, -1]
+    if (way === -1 && x <= 0) return path
+    x = Math.max(0, x)
+  }
+})()
+
+const batAt = (beat: number): Art => {
+  const { x, y } = FLIGHT[beat % FLIGHT.length]!
+  return { rows: BAT_WINGS[beat % 2]!, colors: { P: BAT_COLOR }, x, y }
+}
+
+// A jack-o'-lantern, lit: its eyes go dark for a double blink every six seconds.
+const PUMPKIN = [
+  '.....G....',
+  '....G.....',
+  '.OOOOOOOO.',
+  'OOOOOOOOOO',
+  'OOYYOOYYOO',
+  'OOOOOOOOOO',
+  'OOYYYYYYOO',
+  '.OOOOOOOO.',
+]
+const pumpkinAt = (beat: number): Art => {
+  const isBlinking = beat % 30 === 0 || beat % 30 === 2
+  return {
+    rows: PUMPKIN.map((row, y) => (y === 4 && isBlinking ? row.replace(/Y/g, 'O') : row)),
+    colors: { G: '#5FA040', O: '#E8833A', Y: '#F2C94C' },
+    x: 30,
+    y: 6,
+  }
+}
 
 const BELT: Art = { rows: ['....YYYYYYYYYY....'], colors: { Y: '#E8B739' }, x: 0, y: 3 }
 
@@ -105,6 +155,14 @@ const burst = (column: number, row: number, color: string): Mark[][] => [
   ],
 ]
 const [GOLD_BURST, RED_BURST] = [burst(5, 1, GOLD), burst(14, 0, RED)]
+const FIREWORKS: Mark[][] = [
+  [],
+  GOLD_BURST[0]!,
+  GOLD_BURST[1]!,
+  [...GOLD_BURST[2]!, ...RED_BURST[0]!],
+  RED_BURST[1]!,
+  RED_BURST[2]!,
+]
 
 export const THEMES: Record<Exclude<ThemeName, 'seasonal'>, Theme> = {
   classic: { body: '#D77757', width: 26, height: 8, restX: 4, restY: 2 },
@@ -116,27 +174,15 @@ export const THEMES: Record<Exclude<ThemeName, 'seasonal'>, Theme> = {
     restY: 6,
     costume: [SANTA],
     props: [TREE],
-    background: Array.from({ length: 6 }, (_, frame) => ({
-      marks: FLAKES.map(([column, row], i) => ({
-        text: i % 2 === 0 ? '·' : '*',
-        column: column!,
-        row: (row! + frame) % 6,
-        color: SNOW,
-      })),
-    })),
+    background: beat => ({ marks: snowAt(Math.floor(beat / SLOW)) }),
   },
   halloween: {
     body: '#F2F2F2',
     width: 40,
-    height: 12,
-    restX: 8,
-    restY: 6,
-    background: [
-      { arts: [BAT_UP, ghost(6)] },
-      { arts: [BAT_DOWN, ghost(6)] },
-      { arts: [BAT_UP, ghost(4)] },
-      { arts: [BAT_DOWN, ghost(4)] },
-    ],
+    height: 14,
+    restX: 6,
+    restY: 8,
+    background: beat => ({ arts: [pumpkinAt(beat), batAt(beat)] }),
   },
   'lunar-new-year': {
     body: '#E5483B',
@@ -146,14 +192,7 @@ export const THEMES: Record<Exclude<ThemeName, 'seasonal'>, Theme> = {
     restY: 6,
     costume: [BELT],
     props: [lantern(2), lantern(32)],
-    background: [
-      {},
-      { marks: GOLD_BURST[0] },
-      { marks: GOLD_BURST[1] },
-      { marks: [...GOLD_BURST[2]!, ...RED_BURST[0]!] },
-      { marks: RED_BURST[1] },
-      { marks: RED_BURST[2] },
-    ],
+    background: beat => ({ marks: FIREWORKS[Math.floor(beat / SLOW) % FIREWORKS.length] }),
   },
 }
 
@@ -177,9 +216,9 @@ export function themeOn(now: number): Exclude<ThemeName, 'seasonal'> {
   return isFestival ? 'lunar-new-year' : 'classic'
 }
 
-// One frame's time, in milliseconds; the background steps one frame every BEAT.
+// One frame's time, in milliseconds; the background steps a beat every BEAT.
 export const TICK = 150
-export const BEAT = 600
+export const BEAT = 200
 
 export const REST: Pose = { dx: 0, dy: 0, eyes: 'open', arms: [0, 0], stride: false, zs: 0 }
 
@@ -190,8 +229,7 @@ const eyeHoles = (pose: Pose): number[] => {
   return [5 + shift, 12 + shift]
 }
 
-const backgroundAt = (theme: Theme, beat: number) =>
-  theme.background?.[beat % theme.background.length] ?? {}
+const backgroundAt = (theme: Theme, beat: number): Scenery => theme.background?.(beat) ?? {}
 
 // Row by row, the color of each pixel, undefined where none: the props and the
 // background, then Clawd over them. His body spans x 3-14 and y 0-3, the arms stick

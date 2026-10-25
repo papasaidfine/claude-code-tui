@@ -536,12 +536,12 @@ test('the scene behind Clawd moves whether Claude works or not', { options: { th
   // Snow, apart from him: the top row, over his hat.
   const sky = async () => (await clawdRows(ui)).slice(0, 1).join()
   const before = await sky()
-  await clock.advance(BEAT)
+  await clock.advance(3 * BEAT)
   expect(await sky()).not.toBe(before)
 
   await $.turn.start({ text: 'hi', turnId: 't1' })
   const working = await sky()
-  await clock.advance(BEAT)
+  await clock.advance(3 * BEAT)
   expect(await sky()).not.toBe(working)
   await ui.unmount()
 })
