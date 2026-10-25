@@ -45,7 +45,7 @@ async function record($: EngineInterface, usage: TurnUsage): Promise<void> {
   })
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     await $.command.register({
@@ -55,6 +55,7 @@ export const register: Register = on => {
       immediate: true,
     })
     await refresh($)
+    if (options.openOnStart === true) await $.ui.open({ id: PANE, title: TITLE })
 
     return started
   })

@@ -1,9 +1,17 @@
 {
   "name": "session-rail",
-  "version": "0.4.4",
+  "version": "0.5.0",
   "description": "A Session pane beside the chat: environment, context, usage limits and cost by model, like Claude Desktop's session rail",
   "author": { "name": "papasaidfine" },
   "license": "MIT",
   "repository": "https://github.com/papasaidfine/claude-code-tui",
+  "userConfig": {
+    "openOnStart": {
+      "type": "boolean",
+      "title": "Open the Session pane at start",
+      "description": "Open the Session pane whenever a session starts. Off: it opens only when you run /rail.",
+      "default": false
+    }
+  },
   "types": "./types/index.d.ts"
 }

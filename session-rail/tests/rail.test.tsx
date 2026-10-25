@@ -209,6 +209,20 @@ test('the pane stays closed until /rail opens it', async ($, on) => {
   expect(result.text).toBe('Session pane opened.')
 })
 
+test('with openOnStart, the pane opens as the session starts, and /rail still closes it', { options: { openOnStart: true } }, async ($, on) => {
+  const opened: string[] = []
+  await start($, on, { isRepo: false, opened })
+  expect(opened).toEqual(['session-rail'])
+
+  const result = await $.command.run({
+    command: 'rail',
+    args: '',
+    origin: { kind: 'composer' },
+    presentation: { isFullscreen: true, columns: 160 },
+  })
+  expect(result.text).toBe('Session pane closed.')
+})
+
 test('/rail closes the pane it opened', async ($, on) => {
   const opened: string[] = []
   await start($, on, { isRepo: false, opened })
